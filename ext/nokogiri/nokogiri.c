@@ -1,4 +1,5 @@
 #include <nokogiri.h>
+#include <dlfcn.h>
 
 VALUE mNokogiri ;
 VALUE mNokogiriXml ;
@@ -30,36 +31,45 @@ int is_2_6_16(void)
 
 int nokogiri_symbol_exists(const char *symbol)
 {
-  if (strcmp(symbol, "xmlRelaxNGSetValidStructuredErrors") == 0) {
-#ifdef HAVE_XMLRELAXNGSETVALIDSTRUCTUREDERRORS
-    return 1 ;
+#ifdef RTLD_DEFAULT
+
+  dlerror();
+  dlsym(RTLD_DEFAULT, symbol);
+  return dlerror() == NULL ;
+
 #else
+
+  if (strcmp(symbol, "xmlRelaxNGSetValidStructuredErrors") == 0) {
+#  ifdef HAVE_XMLRELAXNGSETVALIDSTRUCTUREDERRORS
+    return 1 ;
+#  else
     return 0 ;
-#endif
+#  endif
   }
   if (strcmp(symbol, "xmlRelaxNGSetParserStructuredErrors") == 0) {
-#ifdef HAVE_XMLRELAXNGSETPARSERSTRUCTUREDERRORS
+#  ifdef HAVE_XMLRELAXNGSETPARSERSTRUCTUREDERRORS
     return 1 ;
-#else
+#  else
     return 0 ;
-#endif
+#  endif
   }
   if (strcmp(symbol, "xmlSchemaSetValidStructuredErrors") == 0) {
-#ifdef HAVE_XMLSCHEMASETVALIDSTRUCTUREDERRORS
+#  ifdef HAVE_XMLSCHEMASETVALIDSTRUCTUREDERRORS
     return 1 ;
-#else
+#  else
     return 0 ;
-#endif
+#  endif
   }
   if (strcmp(symbol, "xmlSchemaSetParserStructuredErrors") == 0) {
-#ifdef HAVE_XMLSCHEMASETPARSERSTRUCTUREDERRORS
+#  ifdef HAVE_XMLSCHEMASETPARSERSTRUCTUREDERRORS
     return 1 ;
-#else
+#  else
     return 0 ;
-#endif
+#  endif
   }
 
   return 0 ;
+#endif
 }
 
 void Init_nokogiri()

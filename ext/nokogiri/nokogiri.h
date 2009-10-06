@@ -1,6 +1,10 @@
 #ifndef NOKOGIRI_NATIVE
 #define NOKOGIRI_NATIVE
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
+
 #include <stdlib.h>
 #include <assert.h>
 #include <ruby.h>
@@ -18,10 +22,6 @@
 #ifdef USE_INCLUDED_VASPRINTF
 int vasprintf (char **strp, const char *fmt, va_list ap);
 #else
-
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
 
 #  include <stdio.h>
 
