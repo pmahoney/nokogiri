@@ -28,6 +28,7 @@ int vasprintf (char **strp, const char *fmt, va_list ap);
 #endif
 
 int is_2_6_16(void) ;
+int nokogiri_symbol_exists(const char *symbol);
 
 #ifndef UNUSED
 # if defined(__GNUC__)

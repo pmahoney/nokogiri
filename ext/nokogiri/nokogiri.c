@@ -28,6 +28,40 @@ int is_2_6_16(void)
   return (strcmp(xmlParserVersion, "20616") <= 0) ? 1 : 0 ;
 }
 
+int nokogiri_symbol_exists(const char *symbol)
+{
+  if (strcmp(symbol, "xmlRelaxNGSetValidStructuredErrors") == 0) {
+#ifdef HAVE_XMLRELAXNGSETVALIDSTRUCTUREDERRORS
+    return 1 ;
+#else
+    return 0 ;
+#endif
+  }
+  if (strcmp(symbol, "xmlRelaxNGSetParserStructuredErrors") == 0) {
+#ifdef HAVE_XMLRELAXNGSETPARSERSTRUCTUREDERRORS
+    return 1 ;
+#else
+    return 0 ;
+#endif
+  }
+  if (strcmp(symbol, "xmlSchemaSetValidStructuredErrors") == 0) {
+#ifdef HAVE_XMLSCHEMASETVALIDSTRUCTUREDERRORS
+    return 1 ;
+#else
+    return 0 ;
+#endif
+  }
+  if (strcmp(symbol, "xmlSchemaSetParserStructuredErrors") == 0) {
+#ifdef HAVE_XMLSCHEMASETPARSERSTRUCTUREDERRORS
+    return 1 ;
+#else
+    return 0 ;
+#endif
+  }
+
+  return 0 ;
+}
+
 void Init_nokogiri()
 {
   xmlMemSetup(

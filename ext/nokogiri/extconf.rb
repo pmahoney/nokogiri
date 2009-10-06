@@ -131,7 +131,6 @@ end
 
 with_cppflags $INCFLAGS do
   have_func('xmlRelaxNGSetParserStructuredErrors')
-  have_func('xmlRelaxNGSetParserStructuredErrors')
   have_func('xmlRelaxNGSetValidStructuredErrors')
   have_func('xmlSchemaSetValidStructuredErrors')
   have_func('xmlSchemaSetParserStructuredErrors')
