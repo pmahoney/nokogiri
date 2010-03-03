@@ -31,6 +31,7 @@ public class NokogiriService implements BasicLibraryService{
         init_xml_comment(ruby, xml, node);
         RubyClass document = init_xml_document(ruby, xml, node);
         init_html_document(ruby, html, document);
+        init_html_element_description(ruby, html);
         init_xml_document_fragment(ruby, xml, node);
         init_xml_dtd(ruby, xml, node);
         init_xml_element(ruby, xml, node);
@@ -61,6 +62,13 @@ public class NokogiriService implements BasicLibraryService{
         // Nokogiri::HTML::SAX::Parser is defined by nokogiri/html/sax/parser.rb
         RubyClass saxParser = htmlSax.defineClassUnder("ParserContext", xmlSaxParser, HTML_SAXPARSER_ALLOCATOR);
         saxParser.defineAnnotatedMethods(HtmlSaxParserContext.class);
+    }
+
+    public static void init_html_element_description(Ruby ruby, RubyModule html) {
+        RubyModule htmlElemDesc =
+            html.defineClassUnder("ElementDescription", ruby.getObject(),
+                                  HTML_ELEMENT_DESCRIPTION_ALLOCATOR);
+        htmlElemDesc.defineAnnotatedMethods(HtmlElementDescription.class);
     }
 
     public static void init_xml_attr(Ruby ruby, RubyModule xml, RubyClass node){
@@ -204,6 +212,13 @@ public class NokogiriService implements BasicLibraryService{
             return new HtmlSaxParserContext(runtime, klazz);
         }
     };
+
+    private static ObjectAllocator HTML_ELEMENT_DESCRIPTION_ALLOCATOR =
+        new ObjectAllocator() {
+            public IRubyObject allocate(Ruby runtime, RubyClass klazz) {
+                return new HtmlElementDescription(runtime, klazz);
+            }
+        };
 
     private static ObjectAllocator XML_ATTR_ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klazz){
