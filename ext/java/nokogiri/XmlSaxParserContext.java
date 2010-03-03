@@ -69,12 +69,22 @@ public class XmlSaxParserContext extends RubyObject {
     @JRubyMethod(name="io", meta=true)
     public static IRubyObject native_parse_io(ThreadContext context, IRubyObject klazz, IRubyObject data, IRubyObject enc) {
         Ruby ruby = context.getRuntime();
-		int encoding = (int)enc.convertToInteger().getLongValue();
-		RubyIO io = (RubyIO)TypeConverter.convertToType(data, ruby.getIO(), "to_io");
-		XmlSaxParserContext ctx = new XmlSaxParserContext(ruby, (RubyClass) klazz);
+        int encoding = (int)enc.convertToInteger().getLongValue();
 
-		ctx.source = new InputSource(io.getInStream());
-		return ctx;
+        if (invoke(context, data, "respond_to?",
+                   ruby.newSymbol("to_io").to_sym()).isTrue()) {
+            RubyIO io = (RubyIO)TypeConverter.convertToType(data, ruby.getIO(), "to_io");
+            XmlSaxParserContext ctx = new XmlSaxParserContext(ruby, (RubyClass) klazz);
+
+            ctx.source = new InputSource(io.getInStream());
+            return ctx;
+        } else if (invoke(context, data, "respond_to?",
+                          ruby.newSymbol("string").to_sym()).isTrue()) {
+            IRubyObject str = invoke(context, data, "string");
+            return parse_memory(context, klazz, str);
+        } else {
+            throw ruby.newArgumentError("must respond to :to_io or :string");
+        }
     }
 
 	@JRubyMethod()
