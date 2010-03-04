@@ -23,20 +23,6 @@ module Nokogiri
             end
           }
 
-          class_eval <<-eocode, __FILE__, __LINE__ + 1
-            def test_subclass_initialize_#{klass.name.gsub('::', '_')}
-              doc = Nokogiri::XML::Document.new
-              klass = Class.new(#{klass.name}) do
-                attr_accessor :initialized_with
-
-                def initialize *args
-                  @initialized_with = args
-                end
-              end
-              node = klass.new(#{constructor}, 1)
-              assert_equal [#{constructor}, 1], node.initialized_with
-            end
-          eocode
         end
       end
     end
