@@ -82,7 +82,7 @@ public class HtmlElementDescription extends RubyObject {
 
     @JRubyMethod()
     public IRubyObject name(ThreadContext context) {
-        return context.getRuntime().newString(element.name);
+        return context.getRuntime().newString(element.name.toLowerCase());
     }
 
     @JRubyMethod(name="inline?")
