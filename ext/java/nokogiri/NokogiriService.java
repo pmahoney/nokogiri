@@ -32,6 +32,7 @@ public class NokogiriService implements BasicLibraryService{
         RubyClass document = init_xml_document(ruby, xml, node);
         init_html_document(ruby, html, document);
         init_html_element_description(ruby, html);
+        init_html_entity_lookup(ruby, html);
         init_xml_document_fragment(ruby, xml, node);
         init_xml_dtd(ruby, xml, node);
         init_xml_element(ruby, xml, node);
@@ -69,6 +70,13 @@ public class NokogiriService implements BasicLibraryService{
             html.defineClassUnder("ElementDescription", ruby.getObject(),
                                   HTML_ELEMENT_DESCRIPTION_ALLOCATOR);
         htmlElemDesc.defineAnnotatedMethods(HtmlElementDescription.class);
+    }
+
+    public static void init_html_entity_lookup(Ruby ruby, RubyModule html) {
+        RubyModule htmlEntityLookup =
+            html.defineClassUnder("EntityLookup", ruby.getObject(),
+                                  HTML_ENTITY_LOOKUP_ALLOCATOR);
+        htmlEntityLookup.defineAnnotatedMethods(HtmlEntityLookup.class);
     }
 
     public static void init_xml_attr(Ruby ruby, RubyModule xml, RubyClass node){
@@ -217,6 +225,13 @@ public class NokogiriService implements BasicLibraryService{
         new ObjectAllocator() {
             public IRubyObject allocate(Ruby runtime, RubyClass klazz) {
                 return new HtmlElementDescription(runtime, klazz);
+            }
+        };
+
+    private static ObjectAllocator HTML_ENTITY_LOOKUP_ALLOCATOR =
+        new ObjectAllocator() {
+            public IRubyObject allocate(Ruby runtime, RubyClass klazz) {
+                return new HtmlEntityLookup(runtime, klazz);
             }
         };
 
