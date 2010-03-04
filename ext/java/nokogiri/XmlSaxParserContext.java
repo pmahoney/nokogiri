@@ -137,15 +137,24 @@ public class XmlSaxParserContext extends RubyObject {
      * Can take a boolean assignment.
      *
      * @param context
-     * @param klazz
-     * @param data
+     * @param value
      * @return
      */
     @JRubyMethod(name = "replace_entities=")
-    public IRubyObject set_replace_entities(ThreadContext context, IRubyObject value) {
-        System.out.println("replace entities called with " + value.toString());
-                        
+    public IRubyObject set_replace_entities(ThreadContext context,
+                                            IRubyObject value) {
+        if (!value.isTrue()) {
+            throw context.getRuntime()
+                .newRuntimeError("Not replacing entities is unsupported");
+        }
+
         return this;
+    }
+
+    @JRubyMethod(name="replace_entities")
+    public IRubyObject get_replace_entities(ThreadContext context,
+                                            IRubyObject value) {
+        return context.getRuntime().getTrue();
     }
 
 }
