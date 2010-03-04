@@ -11,6 +11,9 @@ import org.cyberneko.html.HTMLEntities;
 
 import static org.jruby.javasupport.util.RuntimeHelpers.invoke;
 
+/**
+ * @author Patrick Mahoney <pat@polycrystal.org>
+ */
 public class HtmlEntityLookup extends RubyObject {
 
     public HtmlEntityLookup(Ruby runtime, RubyClass rubyClass) {

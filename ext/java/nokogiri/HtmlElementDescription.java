@@ -18,6 +18,9 @@ import java.util.Collections;
 
 import static org.jruby.javasupport.util.RuntimeHelpers.invoke;
 
+/**
+ * @author Patrick Mahoney <pat@polycrystal.org>
+ */
 public class HtmlElementDescription extends RubyObject {
 
     /**
