@@ -811,6 +811,9 @@ public class XmlNode extends RubyObject {
         return new XmlElement(ruby, (RubyClass)ruby.getClassFromPath("Nokogiri::XML::Element"), shallower);
     }
 
+    /**
+     * Add <code>other</code> as a sibling before <code>this</code>.
+     */
     @JRubyMethod
     public IRubyObject add_previous_sibling_node(ThreadContext context,
                                                  IRubyObject other) {
@@ -819,7 +822,6 @@ public class XmlNode extends RubyObject {
 
         try {
             Document doc = thisNode.getOwnerDocument();
-            Node parent = thisNode.getParentNode();
 
             if (otherNode.getOwnerDocument() != doc) {
                 Node ret = doc.adoptNode(otherNode);
@@ -829,6 +831,16 @@ public class XmlNode extends RubyObject {
                 }
             }
 
+            Node parent = thisNode.getParentNode();
+            if (parent == null) {
+                /* I'm not sure what do do here...  A node with no
+                 * parent can't exactly have a 'sibling', so we make
+                 * otherNode parentless also. */
+                if (otherNode.getParentNode() != null)
+                    otherNode.getParentNode().removeChild(otherNode);
+
+                return this;
+            }
             parent.insertBefore(otherNode, thisNode);
         } catch (Exception e) {
             throw context.getRuntime().newRuntimeError(e.toString());
@@ -837,6 +849,9 @@ public class XmlNode extends RubyObject {
         return this;
     }
 
+    /**
+     * Add <code>other</code> as a sibling after <code>this</code>.
+     */
     @JRubyMethod
     public IRubyObject add_next_sibling_node(ThreadContext context,
                                              IRubyObject other) {
@@ -845,7 +860,6 @@ public class XmlNode extends RubyObject {
 
         try {
             Document doc = thisNode.getOwnerDocument();
-            Node parent = thisNode.getParentNode();
 
             if (otherNode.getOwnerDocument() != doc) {
                 Node ret = doc.adoptNode(otherNode);
@@ -853,6 +867,18 @@ public class XmlNode extends RubyObject {
                     throw context.getRuntime()
                         .newRuntimeError("Failed to take ownership of node");
                 }
+            }
+
+
+            Node parent = thisNode.getParentNode();
+            if (parent == null) {
+                /* I'm not sure what do do here...  A node with no
+                 * parent can't exactly have a 'sibling', so we make
+                 * otherNode parentless also. */
+                if (otherNode.getParentNode() != null)
+                    otherNode.getParentNode().removeChild(otherNode);
+
+                return this;
             }
 
             Node nextSib = thisNode.getNextSibling();
