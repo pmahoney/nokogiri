@@ -810,4 +810,61 @@ public class XmlNode extends RubyObject {
         if (shallower == null) return ruby.getNil();
         return new XmlElement(ruby, (RubyClass)ruby.getClassFromPath("Nokogiri::XML::Element"), shallower);
     }
+
+    @JRubyMethod
+    public IRubyObject add_previous_sibling_node(ThreadContext context,
+                                                 IRubyObject other) {
+        Node thisNode = this.getNode();
+        Node otherNode = asXmlNode(context, other).getNode();
+
+        try {
+            Document doc = thisNode.getOwnerDocument();
+            Node parent = thisNode.getParentNode();
+
+            if (otherNode.getOwnerDocument() != doc) {
+                Node ret = doc.adoptNode(otherNode);
+                if (ret == null) {
+                    throw context.getRuntime()
+                        .newRuntimeError("Failed to take ownership of node");
+                }
+            }
+
+            parent.insertBefore(otherNode, thisNode);
+        } catch (Exception e) {
+            throw context.getRuntime().newRuntimeError(e.toString());
+        }
+
+        return this;
+    }
+
+    @JRubyMethod
+    public IRubyObject add_next_sibling_node(ThreadContext context,
+                                             IRubyObject other) {
+        Node thisNode = this.getNode();
+        Node otherNode = asXmlNode(context, other).getNode();
+
+        try {
+            Document doc = thisNode.getOwnerDocument();
+            Node parent = thisNode.getParentNode();
+
+            if (otherNode.getOwnerDocument() != doc) {
+                Node ret = doc.adoptNode(otherNode);
+                if (ret == null) {
+                    throw context.getRuntime()
+                        .newRuntimeError("Failed to take ownership of node");
+                }
+            }
+
+            Node nextSib = thisNode.getNextSibling();
+            if (nextSib != null) {
+                parent.insertBefore(otherNode, nextSib);
+            } else {
+                parent.appendChild(otherNode);
+            }
+        } catch (Exception e) {
+            throw context.getRuntime().newRuntimeError(e.toString());
+        }
+
+        return this;
+    }
 }
