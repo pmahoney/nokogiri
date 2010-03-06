@@ -2,6 +2,7 @@ package nokogiri;
 
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.IOException;
 import nokogiri.internals.NokogiriHandler;
 import org.jruby.Ruby;
@@ -87,14 +88,28 @@ public class XmlSaxParserContext extends RubyObject {
         }
     }
 
+    /**
+     * Parse data from a raw input stream. Not a JRuby method.  Meant
+     * to be run in a separate thread by an XmlSaxPushParser.
+     */
+    public static IRubyObject parse_stream(ThreadContext context,
+                                           IRubyObject klazz,
+                                           InputStream stream) {
+        XmlSaxParserContext ctx =
+            new XmlSaxParserContext(context.getRuntime(), (RubyClass)klazz);
+        ctx.source = new InputSource(stream);
+        return ctx;
+    }
+
 	@JRubyMethod()
 	public IRubyObject parse_with(ThreadContext context, IRubyObject handlerRuby) {
 		Ruby ruby = context.getRuntime();
 
-		if(!invoke(context, handlerRuby, "kind_of?",
-				ruby.getClassFromPath("Nokogiri::XML::SAX::Parser")).isTrue()) {
-			throw ruby.newArgumentError("argument must be a Nokogiri::XML::SAX::Parser");
-		}
+                if(!invoke(context, handlerRuby, "respond_to?",
+                           ruby.newSymbol("document")).isTrue()) {
+                    String msg = "argument must respond_to document";
+                    throw ruby.newArgumentError(msg);
+                }
 
 		DefaultHandler2 handler = new NokogiriHandler(ruby, handlerRuby);
 
