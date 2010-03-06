@@ -9,7 +9,7 @@ module Nokogiri
 <?xml version="1.0"?><?TEST-STYLE PIDATA?>
 <!DOCTYPE staff SYSTEM "staff.dtd" [
    <!ATTLIST br width CDATA "0">
-   <!ATTLIST a width CDATA >
+   <!ATTLIST a width CDATA "17">
    <!ATTLIST payment type (check|cash) "cash">
 ]>
 <root />
@@ -69,7 +69,7 @@ module Nokogiri
 
       def test_default
         assert_equal '0', @attr_decl.default
-        assert_nil @attrs[1].default
+        assert_equal '17', @attrs[1].default
       end
 
       def test_enumeration
