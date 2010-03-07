@@ -563,11 +563,20 @@ public class XmlNode extends RubyObject {
 
     @JRubyMethod
     public IRubyObject internal_subset(ThreadContext context) {
-        if(this.node().getOwnerDocument() == null) {
+        Document document;
+
+        if (node().getNodeType() == Node.DOCUMENT_NODE) {
+            document = (Document) node();
+        } else {
+            document = node().getOwnerDocument();
+        }
+
+        if(document == null) {
             return context.getRuntime().getNil();
         }
 
-        return XmlNode.constructNode(context.getRuntime(), this.node().getOwnerDocument().getDoctype());
+        return XmlNode.constructNode(context.getRuntime(),
+                                     document.getDoctype());
     }
 
     @JRubyMethod(name = "key?")
