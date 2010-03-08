@@ -67,11 +67,17 @@ public class XmlDtd extends XmlNode {
                                 RubyArray nodes) {
         Node child = node.getFirstChild();
         while (child != null) {
-            if (child.getNodeName()
+            String nodeName = child.getNodeName();
+            if (nodeName
                 .equals(DTDConfiguration.E_ATTRIBUTE_DECL.localpart)) {
                 IRubyObject attrDecl =
                     XmlAttributeDecl.create(context, child);
                 nodes.append(attrDecl);
+            } else if (nodeName
+                       .equals(DTDConfiguration.E_ELEMENT_DECL.localpart)) {
+                IRubyObject elemDecl =
+                    XmlElementDecl.create(context, child);
+                nodes.append(elemDecl);
             }
 
             extractDecls(context, child, nodes);
