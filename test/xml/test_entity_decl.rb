@@ -32,12 +32,12 @@ module Nokogiri
 
       def test_original_content
         assert_equal "es", @entity_decl.original_content
-        assert_nil @entities[1].original_content
+        assert_equal "e2", @entities[1].original_content
       end
 
       def test_content
         assert_equal "es", @entity_decl.content
-        assert_nil @entities[1].content
+        assert_equal "e2",  @entities[1].content
       end
 
       def test_type
