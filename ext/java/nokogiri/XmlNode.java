@@ -582,6 +582,20 @@ public class XmlNode extends RubyObject {
         return xdtd;
     }
 
+    @JRubyMethod
+    public IRubyObject create_internal_subset(ThreadContext context,
+                                              IRubyObject name,
+                                              IRubyObject external_id,
+                                              IRubyObject system_id) {
+        IRubyObject subset = internal_subset(context);
+        if (!subset.isNil()) {
+            throw context.getRuntime()
+                .newRuntimeError("Document already has an internal subset");
+        }
+
+        throw context.getRuntime().newNotImplementedError("not implemented");
+    }
+
     @JRubyMethod(name = "key?")
     public IRubyObject key_p(ThreadContext context, IRubyObject k) {
         return this.internalNode.methods().key_p(context, this, k);
