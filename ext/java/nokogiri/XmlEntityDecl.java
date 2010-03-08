@@ -39,14 +39,25 @@ public class XmlEntityDecl extends XmlNode {
     }
 
     public static IRubyObject create(ThreadContext context, Node entDeclNode) {
-        XmlElementDecl self =
-            new XmlElementDecl(context.getRuntime(),
-                               getRubyClass(context.getRuntime()),
-                               entDeclNode);
+        XmlEntityDecl self =
+            new XmlEntityDecl(context.getRuntime(),
+                              getRubyClass(context.getRuntime()),
+                              entDeclNode);
         return self;
     }
 
     protected IRubyObject getAttribute(ThreadContext context, String key) {
-        return context.getRuntime().newString(((Element)node).getAttribute(key));
+        String val;
+        val = ((Element)node).getAttribute(key);
+        if (val == null) {
+            return context.getRuntime().getNil();
+        }
+
+        return context.getRuntime().newString(val);
+    }
+
+    @JRubyMethod
+    public IRubyObject content(ThreadContext context) {
+        return getAttribute(context, "value");
     }
 }
