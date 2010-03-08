@@ -837,12 +837,11 @@ public class XmlNode extends RubyObject {
         return new XmlElement(ruby, (RubyClass)ruby.getClassFromPath("Nokogiri::XML::Element"), shallower);
     }
 
-    /**
-     * Add <code>other</code> as a sibling before <code>this</code>.
-     */
-    @JRubyMethod
-    public IRubyObject add_previous_sibling_node(ThreadContext context,
-                                                 IRubyObject other) {
+    protected enum AdoptScheme {
+        PREV_SIBLING, NEXT_SIBLING, REPLACEMENT;
+    }
+    protected IRubyObject adoptAs(ThreadContext context, AdoptScheme scheme,
+                               IRubyObject other) {
         Node thisNode = this.getNode();
         Node otherNode = asXmlNode(context, other).getNode();
 
@@ -858,21 +857,89 @@ public class XmlNode extends RubyObject {
             }
 
             Node parent = thisNode.getParentNode();
-            if (parent == null) {
-                /* I'm not sure what do do here...  A node with no
-                 * parent can't exactly have a 'sibling', so we make
-                 * otherNode parentless also. */
-                if (otherNode.getParentNode() != null)
-                    otherNode.getParentNode().removeChild(otherNode);
 
-                return this;
+            switch (scheme) {
+            case PREV_SIBLING:
+                adoptAsPrevSibling(context, parent, thisNode, otherNode);
+                break;
+            case NEXT_SIBLING:
+                adoptAsNextSibling(context, parent, thisNode, otherNode);
+                break;
+            case REPLACEMENT:
+                adoptAsReplacement(context, parent, thisNode, otherNode);
+                break;
             }
-            parent.insertBefore(otherNode, thisNode);
         } catch (Exception e) {
             throw context.getRuntime().newRuntimeError(e.toString());
         }
 
         return this;
+    }
+
+    protected void adoptAsPrevSibling(ThreadContext context,
+                                      Node parent,
+                                      Node thisNode, Node otherNode) {
+        if (parent == null) {
+            /* I'm not sure what do do here...  A node with no
+             * parent can't exactly have a 'sibling', so we make
+             * otherNode parentless also. */
+            if (otherNode.getParentNode() != null)
+                otherNode.getParentNode().removeChild(otherNode);
+
+            return;
+        }
+
+        parent.insertBefore(otherNode, thisNode);
+    }
+
+    protected void adoptAsNextSibling(ThreadContext context,
+                                      Node parent,
+                                      Node thisNode, Node otherNode) {
+        if (parent == null) {
+            /* I'm not sure what do do here...  A node with no
+             * parent can't exactly have a 'sibling', so we make
+             * otherNode parentless also. */
+            if (otherNode.getParentNode() != null)
+                otherNode.getParentNode().removeChild(otherNode);
+
+            return;
+        }
+
+        Node nextSib = thisNode.getNextSibling();
+        if (nextSib != null) {
+            parent.insertBefore(otherNode, nextSib);
+        } else {
+            parent.appendChild(otherNode);
+        }
+    }
+
+    protected void adoptAsReplacement(ThreadContext context,
+                                      Node parentNode,
+                                      Node thisNode, Node otherNode) {
+        if (parentNode == null) {
+            /* nothing to replace? */
+            return;
+        }
+
+        parentNode.replaceChild(thisNode, otherNode);
+    }
+
+    /**
+     * Replace <code>this</code> with <code>other</code>.
+     */
+    @JRubyMethod
+    public IRubyObject replace_node(ThreadContext context,
+                                    IRubyObject other) {
+        return adoptAs(context, AdoptScheme.REPLACEMENT, other);
+    }
+
+    /**
+     * Add <code>other</code> as a sibling before <code>this</code>.
+     */
+    @JRubyMethod
+    public IRubyObject add_previous_sibling_node(ThreadContext context,
+                                                 IRubyObject other) {
+        return adoptAs(context, AdoptScheme.PREV_SIBLING, other);
     }
 
     /**
@@ -881,42 +948,6 @@ public class XmlNode extends RubyObject {
     @JRubyMethod
     public IRubyObject add_next_sibling_node(ThreadContext context,
                                              IRubyObject other) {
-        Node thisNode = this.getNode();
-        Node otherNode = asXmlNode(context, other).getNode();
-
-        try {
-            Document doc = thisNode.getOwnerDocument();
-
-            if (otherNode.getOwnerDocument() != doc) {
-                Node ret = doc.adoptNode(otherNode);
-                if (ret == null) {
-                    throw context.getRuntime()
-                        .newRuntimeError("Failed to take ownership of node");
-                }
-            }
-
-
-            Node parent = thisNode.getParentNode();
-            if (parent == null) {
-                /* I'm not sure what do do here...  A node with no
-                 * parent can't exactly have a 'sibling', so we make
-                 * otherNode parentless also. */
-                if (otherNode.getParentNode() != null)
-                    otherNode.getParentNode().removeChild(otherNode);
-
-                return this;
-            }
-
-            Node nextSib = thisNode.getNextSibling();
-            if (nextSib != null) {
-                parent.insertBefore(otherNode, nextSib);
-            } else {
-                parent.appendChild(otherNode);
-            }
-        } catch (Exception e) {
-            throw context.getRuntime().newRuntimeError(e.toString());
-        }
-
-        return this;
+        return adoptAs(context, AdoptScheme.NEXT_SIBLING, other);
     }
 }
