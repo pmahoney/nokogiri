@@ -219,7 +219,7 @@ public class XmlDocument extends XmlNode {
         String internalDTD =
             ((Document)docNode).getDoctype().getInternalSubset();
         Document dtdNode = XmlDtdParser.parse(internalDTD);
-        dtd = XmlNode.constructNode(context.getRuntime(), dtdNode);
+        dtd = new XmlDtd(context.getRuntime(), dtdNode);
         docNode.setUserData(DTD_INTERNAL_SUBSET, dtd, null);
 
         return dtd;

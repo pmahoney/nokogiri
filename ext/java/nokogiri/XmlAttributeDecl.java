@@ -4,6 +4,7 @@ import java.util.ArrayList;
 
 import nokogiri.internals.XmlNodeImpl;
 import org.jruby.Ruby;
+import org.jruby.RubyArray;
 import org.jruby.RubyClass;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ThreadContext;
@@ -69,9 +70,24 @@ public class XmlAttributeDecl extends XmlNode {
         return getAttribute(context, "default");
     }
 
+    /**
+     * FIXME: will enumerations all be of the simple (val1|val2|val3)
+     * type string?
+     */
     @JRubyMethod
     public IRubyObject enumeration(ThreadContext context) {
-        throw context.getRuntime().newNotImplementedError("not implemented");
+        RubyArray enumVals = RubyArray.newArray(context.getRuntime());
+        String atype = ((Element)node).getAttribute("atype");
+
+        if (atype != null && atype.charAt(0) == '(') {
+            // removed enclosing parens
+            String valueStr = atype.substring(1, atype.length() - 1);
+            String[] values = valueStr.split("\\|");
+            for (int i = 0; i < values.length; i++) {
+                enumVals.append(context.getRuntime().newString(values[i]));
+            }
+        }
+
+        return enumVals;
     }
 }
-

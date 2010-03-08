@@ -40,6 +40,7 @@ public class NokogiriService implements BasicLibraryService{
         init_xml_namespace(ruby, xml);
         init_xml_node_set(ruby, xml);
         init_xml_reader(ruby, xml);
+        init_xml_attribute_decl(ruby, xml, node);
         RubyClass xmlSaxParser = init_xml_sax_parser(ruby, xml);
         init_xml_sax_push_parser(ruby, xml);
         init_html_sax_parser(ruby, html, xmlSaxParser);
@@ -150,6 +151,14 @@ public class NokogiriService implements BasicLibraryService{
         RubyClass reader = xml.defineClassUnder("Reader", ruby.getObject(), XML_READER_ALLOCATOR);
 
         reader.defineAnnotatedMethods(XmlReader.class);
+    }
+
+    public static void init_xml_attribute_decl(Ruby ruby, RubyModule xml,
+                                               RubyClass node) {
+        RubyClass attrDecl = xml.defineClassUnder("AttributeDecl", node,
+                                                  XML_ATTRIBUTE_DECL_ALLOCATOR);
+
+        attrDecl.defineAnnotatedMethods(XmlAttributeDecl.class);
     }
 
     public static void init_xml_relaxng(Ruby ruby, RubyModule xml, RubyClass schema) {
@@ -315,6 +324,13 @@ public class NokogiriService implements BasicLibraryService{
     private static ObjectAllocator XML_READER_ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klazz) {
             return new XmlReader(runtime, klazz);
+        }
+
+    };
+
+    private static ObjectAllocator XML_ATTRIBUTE_DECL_ALLOCATOR = new ObjectAllocator() {
+        public IRubyObject allocate(Ruby runtime, RubyClass klazz) {
+            return new XmlAttributeDecl(runtime, klazz);
         }
 
     };
