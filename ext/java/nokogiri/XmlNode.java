@@ -40,6 +40,7 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import static java.lang.Math.max;
+import static nokogiri.internals.NokogiriHelpers.getCachedNodeOrCreate;
 
 public class XmlNode extends RubyObject {
 
@@ -575,8 +576,10 @@ public class XmlNode extends RubyObject {
             return context.getRuntime().getNil();
         }
 
-        return XmlNode.constructNode(context.getRuntime(),
-                                     document.getDoctype());
+        XmlDocument xdoc =
+            (XmlDocument) getCachedNodeOrCreate(context.getRuntime(), document);
+        IRubyObject xdtd = xdoc.getInternalSubset(context);
+        return xdtd;
     }
 
     @JRubyMethod(name = "key?")

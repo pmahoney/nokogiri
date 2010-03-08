@@ -3,9 +3,11 @@ package nokogiri;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import javax.xml.parsers.ParserConfigurationException;
+
 import nokogiri.internals.NokogiriUserDataHandler;
 import nokogiri.internals.ParseOptions;
 import nokogiri.internals.XmlDocumentImpl;
+import nokogiri.internals.XmlDtdParser;
 import nokogiri.internals.XmlEmptyDocumentImpl;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
@@ -21,6 +23,10 @@ import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 
 public class XmlDocument extends XmlNode {
+    /* UserData keys for storing extra info in the document node. */
+    protected final static String DTD_INTERNAL_SUBSET = "DTD_INTERNAL_SUBSET";
+    protected final static String DTD_EXTERNAL_SUBSET = "DTD_EXTERNAL_SUBSET";
+
     protected Document document;
     private static boolean substituteEntities = false;
     private static boolean loadExternalSubset = false; // TODO: Verify this.
@@ -195,5 +201,27 @@ public class XmlDocument extends XmlNode {
     @JRubyMethod
     public IRubyObject url(ThreadContext context) {
         return this.internals().url();
+    }
+
+    public IRubyObject getInternalSubset(ThreadContext context) {
+        Node docNode = getNode();
+        IRubyObject dtd =
+            (IRubyObject) docNode.getUserData(DTD_INTERNAL_SUBSET);
+
+        if (dtd != null)
+            return dtd;
+
+        if (((Document)docNode).getDoctype() == null)
+            return context.getRuntime().getNil();
+
+        /* At this point, we have an unparsed DTD, so parse it and
+         * save it back */
+        String internalDTD =
+            ((Document)docNode).getDoctype().getInternalSubset();
+        Document dtdNode = XmlDtdParser.parse(internalDTD);
+        dtd = XmlNode.constructNode(context.getRuntime(), dtdNode);
+        docNode.setUserData(DTD_INTERNAL_SUBSET, dtd, null);
+
+        return dtd;
     }
 }
