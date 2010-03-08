@@ -9,7 +9,7 @@ module Nokogiri
 <?xml version="1.0"?><?TEST-STYLE PIDATA?>
 <!DOCTYPE staff SYSTEM "staff.dtd" [
    <!ENTITY ent1 "es">
-   <!ENTITY nocontent >
+   <!ENTITY ent2 "e2" >
 ]>
 <root />
         eoxml
