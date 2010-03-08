@@ -17,7 +17,7 @@ module Nokogiri
 <root/>
         eoxml
         @elements = @xml.internal_subset.children.find_all { |x|
-          x.type == 15
+          x.kind_of? Nokogiri::XML::ElementDecl
         }
       end
 
