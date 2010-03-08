@@ -42,6 +42,7 @@ public class NokogiriService implements BasicLibraryService{
         init_xml_reader(ruby, xml);
         init_xml_attribute_decl(ruby, xml, node);
         init_xml_element_decl(ruby, xml, node);
+        init_xml_entity_decl(ruby, xml, node);
         RubyClass xmlSaxParser = init_xml_sax_parser(ruby, xml);
         init_xml_sax_push_parser(ruby, xml);
         init_html_sax_parser(ruby, html, xmlSaxParser);
@@ -168,6 +169,14 @@ public class NokogiriService implements BasicLibraryService{
                                                   XML_ELEMENT_DECL_ALLOCATOR);
 
         attrDecl.defineAnnotatedMethods(XmlElementDecl.class);
+    }
+
+    public static void init_xml_entity_decl(Ruby ruby, RubyModule xml,
+                                             RubyClass node) {
+        RubyClass attrDecl = xml.defineClassUnder("EntityDecl", node,
+                                                  XML_ENTITY_DECL_ALLOCATOR);
+
+        attrDecl.defineAnnotatedMethods(XmlEntityDecl.class);
     }
 
     public static void init_xml_relaxng(Ruby ruby, RubyModule xml, RubyClass schema) {
@@ -334,21 +343,24 @@ public class NokogiriService implements BasicLibraryService{
         public IRubyObject allocate(Ruby runtime, RubyClass klazz) {
             return new XmlReader(runtime, klazz);
         }
-
     };
 
     private static ObjectAllocator XML_ATTRIBUTE_DECL_ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klazz) {
             return new XmlAttributeDecl(runtime, klazz);
         }
-
     };
 
     private static ObjectAllocator XML_ELEMENT_DECL_ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klazz) {
             return new XmlElementDecl(runtime, klazz);
         }
+    };
 
+    private static ObjectAllocator XML_ENTITY_DECL_ALLOCATOR = new ObjectAllocator() {
+        public IRubyObject allocate(Ruby runtime, RubyClass klazz) {
+            return new XmlEntityDecl(runtime, klazz);
+        }
     };
 
     private static ObjectAllocator XML_RELAXNG_ALLOCATOR = new ObjectAllocator() {

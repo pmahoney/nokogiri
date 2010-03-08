@@ -68,17 +68,20 @@ public class XmlDtd extends XmlNode {
         Node child = node.getFirstChild();
         while (child != null) {
             String nodeName = child.getNodeName();
+            IRubyObject decl = null;
             if (nodeName
                 .equals(DTDConfiguration.E_ATTRIBUTE_DECL.localpart)) {
-                IRubyObject attrDecl =
-                    XmlAttributeDecl.create(context, child);
-                nodes.append(attrDecl);
+                decl = XmlAttributeDecl.create(context, child);
             } else if (nodeName
                        .equals(DTDConfiguration.E_ELEMENT_DECL.localpart)) {
-                IRubyObject elemDecl =
-                    XmlElementDecl.create(context, child);
-                nodes.append(elemDecl);
+                decl = XmlElementDecl.create(context, child);
+            } else if (nodeName
+                       .equals(DTDConfiguration.E_INTERNAL_ENTITY_DECL.localpart)) {
+                decl = XmlEntityDecl.create(context, child);
             }
+
+            if (decl != null)
+                nodes.append(decl);
 
             extractDecls(context, child, nodes);
             child = child.getNextSibling();
