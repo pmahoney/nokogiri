@@ -332,12 +332,17 @@ public class XmlNode extends RubyObject {
 
         Ruby ruby = context.getRuntime();
 
-        if(!(doc instanceof XmlDocument)) {
-            throw ruby.newArgumentError("document must be an instance of Nokogiri::XML::Document");
+        if (!(doc instanceof XmlNode)) {
+            throw ruby.newArgumentError("node must be kind_of " +
+                                        "Nokogiri::XML::Node");
         }
 
-        XmlDocument xmlDoc = (XmlDocument)doc;
-        Document document = xmlDoc.getDocument();
+        Document document = ((XmlNode)doc).getOwnerDocument();
+        if (document == null) {
+            throw ruby.newArgumentError("node must have owner document");
+        }
+        XmlDocument xmlDoc =
+            (XmlDocument) getCachedNodeOrCreate(ruby, document);
 
         Element element = document.createElementNS(null, name.convertToString().asJavaString());
 
@@ -350,8 +355,8 @@ public class XmlNode extends RubyObject {
         XmlElement node = new XmlElement(ruby,
                 klazz,
                 element);
-        node.internalNode.setDocument(doc);
-        
+        node.internalNode.setDocument(xmlDoc);
+
         RuntimeHelpers.invoke(context, xmlDoc, "decorate", node);
 
         element.setUserData(NokogiriUserDataHandler.CACHED_NODE,
@@ -562,15 +567,21 @@ public class XmlNode extends RubyObject {
         return this.internalNode.methods().get(context, this, attribute);
     }
 
+    /**
+     * Returns the owner document, checking if this node is the
+     * document, or returns null if there is no owner.
+     */
+    protected Document getOwnerDocument() {
+        if (node().getNodeType() == Node.DOCUMENT_NODE) {
+            return (Document) node();
+        } else {
+            return node().getOwnerDocument();
+        }
+    }
+
     @JRubyMethod
     public IRubyObject internal_subset(ThreadContext context) {
-        Document document;
-
-        if (node().getNodeType() == Node.DOCUMENT_NODE) {
-            document = (Document) node();
-        } else {
-            document = node().getOwnerDocument();
-        }
+        Document document = getOwnerDocument();
 
         if(document == null) {
             return context.getRuntime().getNil();
@@ -921,7 +932,12 @@ public class XmlNode extends RubyObject {
             return;
         }
 
-        parentNode.replaceChild(thisNode, otherNode);
+        try {
+            parentNode.replaceChild(otherNode, thisNode);
+        } catch (Exception e) {
+            String prefix = "could not replace child: ";
+            throw context.getRuntime().newRuntimeError(prefix + e.toString());
+        }
     }
 
     /**
