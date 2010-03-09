@@ -33,7 +33,7 @@ class TestNokogiri < Nokogiri::TestCase
   end
 
   def test_libxml_iconv
-    assert Nokogiri.const_defined?(:LIBXML_ICONV_ENABLED)
+    assert Nokogiri.const_defined?(:LIBXML_ICONV_ENABLED) if Nokogiri.uses_libxml?
   end
 
   def test_parse_with_io
