@@ -25,7 +25,8 @@ public class NokogiriService implements BasicLibraryService{
         RubyModule html = nokogiri.defineModuleUnder("HTML");
 
         RubyClass node = xml.defineClassUnder("Node", ruby.getObject(), XML_NODE_ALLOCATOR);
-        
+
+        init_encoding_handler(ruby, nokogiri);
         init_xml_node(ruby, node);
         init_xml_attr(ruby, xml, node);
         init_xml_comment(ruby, xml, node);
@@ -54,6 +55,13 @@ public class NokogiriService implements BasicLibraryService{
         init_xml_xpath(ruby, xml);
         init_xml_xpath_context(ruby, xml);
         init_xslt_stylesheet(ruby, nokogiri);
+    }
+
+    public static void init_encoding_handler(Ruby ruby, RubyModule nokogiri) {
+        RubyModule encHandler = nokogiri.defineClassUnder("EncodingHandler",
+                                                          ruby.getObject(),
+                                                          ENCODING_HANDLER_ALLOCATOR);
+        encHandler.defineAnnotatedMethods(EncodingHandler.class);
     }
 
     public static void init_html_document(Ruby ruby, RubyModule html, RubyClass document) {
@@ -246,6 +254,12 @@ public class NokogiriService implements BasicLibraryService{
 
         stylesheet.defineAnnotatedMethods(XsltStylesheet.class);
     }
+
+    private static ObjectAllocator ENCODING_HANDLER_ALLOCATOR = new ObjectAllocator() {
+        public IRubyObject allocate(Ruby runtime, RubyClass klazz) {
+            return new EncodingHandler(runtime, klazz, "");
+        }
+    };
 
     private static ObjectAllocator HTML_DOCUMENT_ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klazz) {
