@@ -1,6 +1,5 @@
 package nokogiri;
 
-import nokogiri.internals.XmlNodeImpl;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;

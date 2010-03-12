@@ -2,8 +2,6 @@ package nokogiri;
 
 import java.io.IOException;
 import javax.xml.parsers.ParserConfigurationException;
-import nokogiri.internals.HtmlDocumentImpl;
-import nokogiri.internals.HtmlEmptyDocumentImpl;
 import nokogiri.internals.HtmlParseOptions;
 import nokogiri.internals.ParseOptions;
 import nokogiri.internals.SaveContext;
