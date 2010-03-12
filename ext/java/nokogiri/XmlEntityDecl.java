@@ -16,7 +16,6 @@ import org.w3c.dom.Node;
  * @author Patrick Mahoney <pat@polycrystal.org>
  */
 public class XmlEntityDecl extends XmlNode {
-    protected Node node = null;
 
     public static RubyClass getRubyClass(Ruby ruby) {
         return (RubyClass)ruby.getClassFromPath("Nokogiri::XML::EntityDecl");
@@ -32,10 +31,7 @@ public class XmlEntityDecl extends XmlNode {
      * DTD.
      */
     public XmlEntityDecl(Ruby ruby, RubyClass klass, Node entDeclNode) {
-        super(ruby, klass);
-        node = entDeclNode;
-        // TODO: ditch the *Impl classes?
-        internalNode = new XmlNodeImpl(ruby, node);
+        super(ruby, klass, entDeclNode);
     }
 
     public static IRubyObject create(ThreadContext context, Node entDeclNode) {

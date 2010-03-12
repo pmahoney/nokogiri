@@ -1,5 +1,6 @@
 package nokogiri;
 
+import nokogiri.internals.SaveContext;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.RubyModule;
@@ -7,9 +8,16 @@ import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.w3c.dom.Attr;
+import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
 public class XmlAttr extends XmlNode{
+
+    public static final String[] HTML_BOOLEAN_ATTRS = {
+        "checked", "compact", "declare", "defer", "disabled", "ismap",
+        "multiple", "nohref", "noresize", "noshade", "nowrap", "readonly",
+        "selected"
+    };
 
     public XmlAttr(Ruby ruby, Node attr){
         super(ruby, ((RubyModule) ruby.getModule("Nokogiri").getConstant("XML")).getClass("Attr"), attr);
@@ -35,11 +43,82 @@ public class XmlAttr extends XmlNode{
                 xmlDoc.getDocument().createAttribute(content.convertToString().asJavaString()));
     }
 
+    public boolean isHtmlBooleanAttr() {
+        String name = node.getNodeName().toLowerCase();
+
+        for(String s : HTML_BOOLEAN_ATTRS) {
+            if(s.equals(name)) return true;
+        }
+
+        return false;
+    }
+
+
+    private String serializeAttrTextContent(String s) {
+        char[] c = s.toCharArray();
+        StringBuffer buffer = new StringBuffer(c.length);
+
+        for(int i = 0; i < c.length; i++) {
+            switch(c[i]){
+                case '\n': buffer.append("&#10;"); break;
+                case '\r': buffer.append("&#13;"); break;
+                case '\t': buffer.append("&#9;"); break;
+                case '"': buffer.append("&quot;"); break;
+                case '<': buffer.append("&lt;"); break;
+                case '>': buffer.append("&gt;"); break;
+                case '&': buffer.append("&amp;"); break;
+                default: buffer.append(c[i]);
+            }
+        }
+
+        return buffer.toString();
+    }
+
     @JRubyMethod(name="value=")
     public IRubyObject value_set(ThreadContext context, IRubyObject content){
-        Attr current = (Attr) node();
-        current.setValue(this.encode_special_chars(context, content).convertToString().asJavaString());
-        this.internalNode.setContent(content);
+        Attr attr = (Attr) node;
+        attr.setValue(this.encode_special_chars(context, content).convertToString().asJavaString());
+        setContent(content);
         return content;
     }
+
+    @Override
+    public void saveContent(ThreadContext context, SaveContext ctx) {
+        Attr attr = (Attr) node;
+        ctx.append(" ");
+        ctx.append(attr.getNodeName());
+        ctx.append("=\"");
+        ctx.append(serializeAttrTextContent(attr.getValue()));
+        ctx.append("\"");
+    }
+
+    @Override
+    public void saveContentAsHtml(ThreadContext context, SaveContext ctx) {
+        Attr attr = (Attr) node;
+        ctx.append(" ");
+
+        ctx.append(attr.getNodeName());
+
+        if(!this.isHtmlBooleanAttr()) {
+            String value = attr.getValue();
+            if(value != null) {
+                ctx.append("=");
+                ctx.append("\"");
+                ctx.append(serializeAttrTextContent(attr.getValue()));
+                ctx.append("\"");
+            } else {
+                ctx.append("=\"\"");
+            }
+        }
+    }
+
+    @Override
+    public IRubyObject unlink(ThreadContext context) {
+        Attr attr = (Attr) node;
+        Element parent = attr.getOwnerElement();
+        parent.removeAttributeNode(attr);
+
+        return this;
+    }
+
 }

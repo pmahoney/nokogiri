@@ -1,5 +1,6 @@
 package nokogiri;
 
+import nokogiri.internals.SaveContext;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.anno.JRubyMethod;
@@ -19,5 +20,20 @@ public class XmlComment extends XmlNode {
         Document document = xmlDoc.getDocument();
         Node node = document.createComment(text.convertToString().asJavaString());
         return XmlNode.constructNode(context.getRuntime(), node);
+    }
+
+    @Override
+    public boolean isComment() { return true; }
+
+    @Override
+    public void saveContent(ThreadContext context, SaveContext ctx) {
+        ctx.append("<!--");
+        ctx.append(content(context).convertToString().asJavaString());
+        ctx.append("-->");
+    }
+
+    @Override
+    public void saveContentAsHtml(ThreadContext context, SaveContext ctx) {
+        saveContent(context, ctx);
     }
 }

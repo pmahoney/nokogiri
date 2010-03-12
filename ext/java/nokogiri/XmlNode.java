@@ -1,7 +1,6 @@
 package nokogiri;
 
 import nokogiri.internals.NokogiriHelpers;
-import nokogiri.internals.XmlNodeImpl;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import javax.xml.parsers.DocumentBuilder;
@@ -41,11 +40,20 @@ import org.xml.sax.SAXException;
 
 import static java.lang.Math.max;
 import static nokogiri.internals.NokogiriHelpers.getCachedNodeOrCreate;
+import static nokogiri.internals.NokogiriHelpers.isNamespace;
 
 public class XmlNode extends RubyObject {
 
-    protected XmlNodeImpl internalNode;
+    /** The underlying Node object. */
+    protected Node node;
     protected NokogiriNamespaceCache nsCache;
+
+    /* Cached objects */
+    protected IRubyObject content = null;
+    protected IRubyObject doc = null;
+    protected IRubyObject name = null;
+    protected IRubyObject namespace = null;
+    protected IRubyObject namespace_definitions = null;
 
     /*
      * Taken from http://ejohn.org/blog/comparing-document-position/
@@ -59,38 +67,74 @@ public class XmlNode extends RubyObject {
     protected static final int FIRST_PRECEDES_SECOND = 4;
     protected static final int SECOND_CONTAINS_FIRST = 8;
     protected static final int FIRST_CONTAINS_SECOND = 16;
-    
-    public XmlNode(Ruby ruby, RubyClass cls){
-        this(ruby,cls,null);
+
+    /**
+     * Cast <code>node</code> to an XmlNode or raise a type error
+     * in <code>context</code>.
+     */
+    protected static XmlNode asXmlNode(ThreadContext context, IRubyObject node) {
+        return _asXmlNode(context, node, false);
     }
 
-    public XmlNode(Ruby ruby, RubyClass cls, Node node) {
-        super(ruby, cls);
-        this.nsCache = new NokogiriNamespaceCache();
-        this.internalNode = XmlNodeImpl.getImplForNode(ruby, node);
-        if(node != null && node.getNodeType() != Node.DOCUMENT_NODE) {
-            XmlDocument ownerXml = (XmlDocument) this.document(ruby.getCurrentContext());
+    /**
+     * Cast <code>node</code> to an XmlNode, or null if RubyNil, or
+     * raise a type error in <code>context</code>.
+     */
+    protected static XmlNode asXmlNodeOrNull(ThreadContext context, IRubyObject node) {
+        return _asXmlNode(context, node, true);
+    }
 
-            // Don't touch this. Some nodes has no document
-            if(ownerXml == null) return;
-            RuntimeHelpers.invoke(ruby.getCurrentContext(), ownerXml, "decorate", this);
-            node.setUserData(NokogiriUserDataHandler.CACHED_NODE, this,
+    /**
+     * Get the XmlNode associated with the underlying
+     * <code>node</code>. Throws an exception if there is no XmlNode.
+     */
+    public static XmlNode fromNode(ThreadContext context, Node node) {
+        if (node == null)
+            throw context.getRuntime().newRuntimeError("node is null");
+
+        XmlNode xnode = (XmlNode) node.getUserData(NokogiriUserDataHandler.CACHED_NODE);
+        if (xnode == null)
+            throw context.getRuntime().newRuntimeError("no cached XmlNode");
+
+        return xnode;
+    }
+
+    /**
+     * Get the XmlNode associated with the underlying
+     * <code>node</code>. Creates a new XmlNode (or appropriate
+     * subclass) wrapping <code>node</code> if there is no cached
+     * value.
+     */
+    public static IRubyObject fromNodeOrCreate(ThreadContext context,
+                                               Node node) {
+        Ruby ruby = context.getRuntime();
+        if (node == null) return ruby.getNil();
+        XmlNode xmlNode =
+            (XmlNode) node.getUserData(NokogiriUserDataHandler.CACHED_NODE);
+        if (xmlNode == null) {
+            xmlNode = (XmlNode) XmlNode.constructNode(ruby, node);
+            node.setUserData(NokogiriUserDataHandler.CACHED_NODE, xmlNode,
                     new NokogiriUserDataHandler(ruby));
         }
+        return xmlNode;
     }
 
-    protected void assimilateXmlNode(ThreadContext context, IRubyObject otherNode) {
-        XmlNode toAssimilate = asXmlNode(context, otherNode);
-
-        this.internalNode = toAssimilate.internalNode;
-    }
-
-    private static XmlNode asXmlNode(ThreadContext context, IRubyObject node) {
-        if (!(node instanceof XmlNode)) {
-            throw context.getRuntime().newTypeError(node, (RubyClass) context.getRuntime().getClassFromPath("Nokogiri::XML::Node"));
+    /**
+     * Cast <code>node</code> to an XmlNode if possible.  If
+     * <code>allowNil</code> is true and node is Ruby nil, returns
+     * null.  Otherwise, raise a type error in <code>context</code>.
+     */
+    private static XmlNode _asXmlNode(ThreadContext context,
+                                      IRubyObject node,
+                                      boolean allowNil) {
+        if (allowNil && (node == null || node.isNil())) {
+            return null;
+        } else if (!(node instanceof XmlNode)) {
+            Ruby ruby = context.getRuntime();
+            throw ruby.newTypeError(node,(RubyClass) ruby.getClassFromPath("Nokogiri::XML::Node"));
+        } else {
+            return (XmlNode) node;
         }
-
-        return (XmlNode) node;
     }
 
     /**
@@ -103,11 +147,11 @@ public class XmlNode extends RubyObject {
         XmlNode p = asXmlNode(context, prev);
         XmlNode c = asXmlNode(context, cur);
 
-        Node pNode = p.node();
-        Node cNode = c.node();
+        Node pNode = p.node;
+        Node cNode = c.node;
 
         pNode.setNodeValue(pNode.getNodeValue()+cNode.getNodeValue());
-        p.internalNode.resetContent();
+        p.content = null;       // clear cached content
 
         c.assimilateXmlNode(context, p);
     }
@@ -121,12 +165,16 @@ public class XmlNode extends RubyObject {
      * @param secondNode
      * @param thirdNode
      */
-    protected static void coalesceTextNodesInteligently(ThreadContext context, IRubyObject firstNode,
+    protected static void coalesceTextNodesIntelligently(ThreadContext context, IRubyObject firstNode,
             IRubyObject secondNode, IRubyObject thirdNode) {
 
-        Node first = (firstNode.isNil()) ? null : asXmlNode(context, firstNode).node();
-        Node second = asXmlNode(context, secondNode).node();
-        Node third = (thirdNode.isNil()) ? null : asXmlNode(context, thirdNode).node();
+        XmlNode x1 = asXmlNodeOrNull(context, firstNode);
+        XmlNode x2 = asXmlNode(context, secondNode);
+        XmlNode x3 = asXmlNodeOrNull(context, thirdNode);
+
+        Node first = x1 == null ? null : x1.node;
+        Node second = x2.node;
+        Node third = x3 == null ? null : x3.node;
 
         if(second.getNodeType() == Node.TEXT_NODE) {
             if(first != null && first.getNodeType() == Node.TEXT_NODE) {
@@ -135,9 +183,13 @@ public class XmlNode extends RubyObject {
                 coalesceTextNodes(context, secondNode, thirdNode);
             }
         }
-
     }
 
+    /**
+     * Construct a new XmlNode wrapping <code>node</code>.  The proper
+     * subclass of XmlNode is chosen based on the type of
+     * <code>node</code>.
+     */
     public static IRubyObject constructNode(Ruby ruby, Node node) {
         if (node == null) return ruby.getNil();
         // this is slow; need a way to cache nokogiri classes/modules somewhere
@@ -163,21 +215,80 @@ public class XmlNode extends RubyObject {
         }
     }
 
-    protected RubyArray getNsDefinitions(Ruby ruby) {
-        return this.internalNode.getNsDefinitions(ruby);
+    public XmlNode(Ruby ruby, RubyClass cls){
+        this(ruby, cls, null);
     }
 
+    public XmlNode(Ruby ruby, RubyClass cls, Node node) {
+        super(ruby, cls);
+        this.nsCache = new NokogiriNamespaceCache();
+        this.node = node;
+
+        if (node != null) {
+            node.setUserData(NokogiriUserDataHandler.CACHED_NODE, this,
+                             new NokogiriUserDataHandler(ruby));
+
+            if (node.getNodeType() != Node.DOCUMENT_NODE) {
+                XmlNode owner = (XmlNode) this.document(ruby.getCurrentContext());
+
+                if (owner != null && owner instanceof XmlDocument) {
+                    RuntimeHelpers.invoke(ruby.getCurrentContext(),
+                                          owner, "decorate", this);
+                }
+            }
+        }
+    }
+
+    public void resetCache(Ruby ruby) {
+        node.setUserData(NokogiriUserDataHandler.CACHED_NODE, this,
+                         new NokogiriUserDataHandler(ruby));
+    }
+
+
+    /**
+     * Set the underlying node of this node to the underlying node of
+     * <code>otherNode</code>.
+     *
+     * FIXME: also update the cached node?
+     */
+    protected void assimilateXmlNode(ThreadContext context, IRubyObject otherNode) {
+        XmlNode toAssimilate = asXmlNode(context, otherNode);
+
+        this.node = toAssimilate.node;
+    }
+
+    protected RubyArray getNsDefinitions(Ruby ruby) {
+        if (this.namespace_definitions == null) {
+            RubyArray arr = ruby.newArray();
+            NamedNodeMap nodes = this.node.getAttributes();
+
+            if(nodes == null) {
+                return ruby.newEmptyArray();
+            }
+
+            for(int i = 0; i < nodes.getLength(); i++) {
+                Node n = nodes.item(i);
+                if(isNamespace(n)) {
+                    arr.append(XmlNamespace.fromNode(ruby, n));
+                }
+            }
+
+            this.namespace_definitions = arr;
+        }
+
+        return (RubyArray) this.namespace_definitions;
+    }
+
+    public void add_namespace_definitions(ThreadContext context,
+                                          XmlNamespace ns,
+                                          String prefix, String href) {}
+
     public Node getNode() {
-        return this.internalNode.getNode();
+        return node;
     }
 
     public static Node getNodeFromXmlNode(ThreadContext context, IRubyObject xmlNode) {
-        
-        return asXmlNode(context, xmlNode).node();
-    }
-
-    protected Node getNodeToCompare() {
-        return this.getNode();
+        return asXmlNode(context, xmlNode).node;
     }
 
     protected String indentString(IRubyObject indentStringObject, String xml) {
@@ -229,19 +340,11 @@ public class XmlNode extends RubyObject {
         return context.getRuntime().newData(this.getType(), this.getNode());
     }
 
-    public boolean isComment() { return this.internalNode.methods().isComment(); }
+    public boolean isComment() { return false; }
 
-    public boolean isElement() { return this.internalNode.methods().isElement(); }
+    public boolean isElement() { return false; }
 
-    public boolean isProcessingInstruction() { return this.internalNode.methods().isProcessingInstruction(); }
-
-    /*
-     * A more rubyist way to get the internal node.
-     */
-
-    public Node node() {
-        return this.getNode();
-    }
+    public boolean isProcessingInstruction() { return false; }
 
     protected IRubyObject parseRubyString(Ruby ruby, RubyString content) {
         try {
@@ -269,49 +372,36 @@ public class XmlNode extends RubyObject {
     }
 
     public void post_add_child(ThreadContext context, XmlNode current, XmlNode child) {
-        this.internalNode.post_add_child(context, current, child);
+    }
+
+    public void setNamespaceDefinitions(IRubyObject namespace_definitions) {
+        this.namespace_definitions = namespace_definitions;
     }
 
     public void relink_namespace(ThreadContext context) {
-        this.internalNode.methods().relink_namespace(context, this);
-
         ((XmlNodeSet) this.children(context)).relink_namespace(context);
     }
 
-    public void resetDocumentCache() {
-        this.internalNode.resetDocument();
-    }
-
-    public void resetDueToRenaming() {
-        this.internalNode.resetName();
-    }
-
     public void saveContent(ThreadContext context, SaveContext ctx) {
-        this.internalNode.methods().saveContent(context, this, ctx);
     }
 
     public void saveContentAsHtml(ThreadContext context, SaveContext ctx) {
-        this.internalNode.saveContentAsHtml(context, this, ctx);
-    }
-
-    public void setDocument(IRubyObject doc) {
-        this.internalNode.setDocument(doc);
-    }
-
-    public void setInternalNode(XmlNodeImpl impl) {
-        this.internalNode = impl;
     }
 
     public void setName(IRubyObject name) {
-        this.internalNode.setName(name);
+        this.name = name;
+    }
+
+    public void setDocument(IRubyObject doc) {
+        this.doc = doc;
     }
 
     protected void setNode(Ruby ruby, Node node) {
-        this.internalNode = XmlNodeImpl.getImplForNode(ruby, node);
+        this.node = node;
     }
 
     public void updateNodeNamespaceIfNecessary(ThreadContext context, XmlNamespace ns) {
-        String oldPrefix = this.node().getPrefix();
+        String oldPrefix = this.node.getPrefix();
         String uri = ns.href(context).convertToString().asJavaString();
 
         /*
@@ -322,9 +412,31 @@ public class XmlNode extends RubyObject {
                 && oldPrefix.equals(ns.prefix(context).convertToString().asJavaString()));
 
         if(update) {
-            this.node().getOwnerDocument().renameNode(this.node(), uri, this.node().getNodeName());
-            this.internalNode.setNamespace(ns);
+            this.node.getOwnerDocument().renameNode(this.node, uri, this.node.getNodeName());
+            this.namespace = ns;
         }
+    }
+
+    public RubyString getNodeName(ThreadContext context) {
+        String str = null;
+
+        if (this.name == null && node != null) {
+            str = node.getNodeName();
+            if (str == null) { str = ""; }
+
+            if(str.equals("#document")) {
+                str = "document";
+            } else if(str.equals("#text")) {
+                str = "text";
+            } else {
+                str = NokogiriHelpers.getLocalName(str);
+            }
+
+            if (str == null) str = "";
+            this.name = context.getRuntime().newString(str);
+        }
+
+        return (RubyString) this.name;
     }
 
     @JRubyMethod(name = "new", meta = true)
@@ -332,12 +444,7 @@ public class XmlNode extends RubyObject {
 
         Ruby ruby = context.getRuntime();
 
-        if (!(doc instanceof XmlNode)) {
-            throw ruby.newArgumentError("node must be kind_of " +
-                                        "Nokogiri::XML::Node");
-        }
-
-        Document document = ((XmlNode)doc).getOwnerDocument();
+        Document document = asXmlNode(context, doc).getOwnerDocument();
         if (document == null) {
             throw ruby.newArgumentError("node must have owner document");
         }
@@ -353,31 +460,62 @@ public class XmlNode extends RubyObject {
         }
 
         XmlElement node = new XmlElement(ruby,
-                klazz,
-                element);
-        node.internalNode.setDocument(xmlDoc);
+                                         klazz,
+                                         element);
+        node.setDocument(xmlDoc);
 
         RuntimeHelpers.invoke(context, xmlDoc, "decorate", node);
 
         element.setUserData(NokogiriUserDataHandler.CACHED_NODE,
-                node, new NokogiriUserDataHandler(ruby));
+                            node, new NokogiriUserDataHandler(ruby));
 
         if(block.isGiven()) block.call(context, node);
 
         return node;
     }
 
-    @JRubyMethod
-    public IRubyObject add_child(ThreadContext context, IRubyObject child) {
-        XmlNode childNode = asXmlNode(context, child);
-        childNode.internalNode.methods().add_child(context, this, childNode);
+    protected void saveNodeListContent(ThreadContext context, XmlNodeSet list, SaveContext ctx) {
+        saveNodeListContent(context, (RubyArray) list.to_a(context), ctx);
+    }
 
-        return child;
+    protected void saveNodeListContent(ThreadContext context, RubyArray array, SaveContext ctx) {
+        int length = array.getLength();
+
+        boolean formatIndentation = ctx.format() && ctx.indentString()!=null;
+
+        for(int i = 0; i < length; i++) {
+            XmlNode cur = (XmlNode) array.get(i);
+
+            if(formatIndentation &&
+                    (cur.isElement() || cur.isComment() || cur.isProcessingInstruction())) {
+                ctx.append(ctx.getCurrentIndentString());
+            }
+
+            cur.saveContent(context, ctx);
+
+            if(ctx.format()) ctx.append("\n");
+        }
+    }
+
+    protected void saveNodeListContentAsHtml(ThreadContext context, XmlNodeSet list, SaveContext ctx) {
+        saveNodeListContentAsHtml(context, (RubyArray) list.to_a(context), ctx);
+    }
+
+    protected void saveNodeListContentAsHtml(ThreadContext context, RubyArray array, SaveContext ctx) {
+        int length = array.getLength();
+
+        boolean formatIndentation = ctx.format() && ctx.indentString()!=null;
+
+        for(int i = 0; i < length; i++) {
+            XmlNode cur = (XmlNode) array.get(i);
+            cur.saveContentAsHtml(context, ctx);
+        }
     }
 
     @JRubyMethod
     public IRubyObject add_child_node(ThreadContext context, IRubyObject child) {
-        return add_child(context, child);
+        adoptAs(context, AdoptScheme.CHILD, child);
+        return child;
     }
 
     @JRubyMethod
@@ -386,51 +524,17 @@ public class XmlNode extends RubyObject {
         String hrefString = href.convertToString().asJavaString();
         XmlNamespace ns = this.nsCache.get(context, this, prefixString, hrefString);
 
-        this.internalNode.methods().add_namespace_definitions(context, this, ns,
-                (prefix.isNil()) ? "xmlns" : "xmlns:"+prefixString, hrefString);
+        add_namespace_definitions(context, ns,
+                                  (prefix.isNil()) ? "xmlns" : "xmlns:"+prefixString,
+                                  hrefString);
 
-        this.internalNode.resetNamespaceDefinitions();
+        // resetNamespaceDefinitions();
         return ns;
     }
 
     @JRubyMethod
-    public IRubyObject add_next_sibling(ThreadContext context, IRubyObject appendNode) {
-        IRubyObject nextSibling = this.next_sibling(context);
-
-        XmlNode otherNode = asXmlNode(context, appendNode);
-        Node next = this.node().getNextSibling();
-        if (next != null) {
-            this.node().getParentNode().insertBefore(otherNode.node(), next);
-        } else {
-            this.node().getParentNode().appendChild(otherNode.node());
-        }
-        RuntimeHelpers.invoke(context, otherNode, "decorate!");
-
-        coalesceTextNodesInteligently(context, this, appendNode, nextSibling);
-
-        return otherNode;
-    }
-
-    @JRubyMethod
-    public IRubyObject add_previous_sibling(ThreadContext context, IRubyObject node) {
-        IRubyObject previousSibling = this.previous_sibling(context);
-        XmlNode otherNode = asXmlNode(context, node);
-
-        try{
-            this.node().getParentNode().insertBefore(otherNode.node(), this.node());
-        } catch (DOMException ex) {
-            throw context.getRuntime().newRuntimeError("This should not happen: "+ex.getMessage());
-        }
-        RuntimeHelpers.invoke(context , otherNode, "decorate!");
-
-        coalesceTextNodesInteligently(context, previousSibling, otherNode, this);
-
-        return node;
-    }
-
-    @JRubyMethod
     public IRubyObject attribute(ThreadContext context, IRubyObject name){
-        NamedNodeMap attrs = this.node().getAttributes();
+        NamedNodeMap attrs = this.node.getAttributes();
         Node attr = attrs.getNamedItem(name.convertToString().asJavaString());
         if(attr == null) {
             return  context.getRuntime().newString(ERR_INSECURE_SET_INST_VAR);
@@ -440,7 +544,7 @@ public class XmlNode extends RubyObject {
 
     @JRubyMethod
     public IRubyObject attribute_nodes(ThreadContext context) {
-        NamedNodeMap nodeMap = this.node().getAttributes();
+        NamedNodeMap nodeMap = this.node.getAttributes();
 
         Ruby ruby = context.getRuntime();
         if(nodeMap == null){
@@ -461,7 +565,7 @@ public class XmlNode extends RubyObject {
         String namej = name.convertToString().asJavaString();
         String nsj = (namespace.isNil()) ? null : namespace.convertToString().asJavaString();
 
-        Node el = this.node().getAttributes().getNamedItemNS(nsj, namej);
+        Node el = this.node.getAttributes().getNamedItemNS(nsj, namej);
 
         if(el == null) {
             return context.getRuntime().getNil();
@@ -473,7 +577,7 @@ public class XmlNode extends RubyObject {
     public IRubyObject attributes(ThreadContext context) {
         Ruby ruby = context.getRuntime();
         RubyHash hash = RubyHash.newHash(ruby);
-        NamedNodeMap attrs = node().getAttributes();
+        NamedNodeMap attrs = node.getAttributes();
         for (int i = 0; i < attrs.getLength(); i++) {
             Node attr = attrs.item(i);
             hash.op_aset(context, RubyString.newString(ruby, attr.getNodeName()), RubyString.newString(ruby, attr.getNodeValue()));
@@ -483,36 +587,38 @@ public class XmlNode extends RubyObject {
 
     @JRubyMethod(name = "blank?")
     public IRubyObject blank_p(ThreadContext context) {
-        return this.internalNode.methods().blank_p(context, this);
+        return context.getRuntime().getFalse();
     }
 
     @JRubyMethod
     public IRubyObject child(ThreadContext context) {
-        return constructNode(context.getRuntime(), node().getFirstChild());
+        return fromNodeOrCreate(context, node.getFirstChild());
     }
 
     @JRubyMethod
     public IRubyObject children(ThreadContext context) {
-       return this.internalNode.children(context, this);
-
+        XmlNodeSet result = new XmlNodeSet(context.getRuntime(),
+                                           node.getChildNodes());
+        result.setDocument((XmlDocument) fromNode(context, this.getOwnerDocument()));
+        return result;
     }
 
     @JRubyMethod
-    public IRubyObject compare(ThreadContext context, IRubyObject otherNode) {
-        if(!(otherNode instanceof XmlNode)) {
+    public IRubyObject compare(ThreadContext context, IRubyObject other) {
+        if(!(other instanceof XmlNode)) {
             return context.getRuntime().newFixnum(-2);
         }
 
-        Node on = ((XmlNode) otherNode).getNodeToCompare();
+        Node otherNode = asXmlNode(context, other).node;
 
         // Do not touch this if, if it's not for a good reason.
-        if(getNodeToCompare().getNodeType() == Node.DOCUMENT_NODE ||
-                on.getNodeType() == Node.DOCUMENT_NODE) {
+        if(node.getNodeType() == Node.DOCUMENT_NODE ||
+           otherNode.getNodeType() == Node.DOCUMENT_NODE) {
             return context.getRuntime().newFixnum(-1);
         }
 
         try{
-            int res = getNodeToCompare().compareDocumentPosition(on);
+            int res = node.compareDocumentPosition(otherNode);
             if( (res & FIRST_PRECEDES_SECOND) == FIRST_PRECEDES_SECOND) {
                 return context.getRuntime().newFixnum(-1);
             } else if ( (res & SECOND_PRECEDES_FIRST) == SECOND_PRECEDES_FIRST) {
@@ -529,12 +635,23 @@ public class XmlNode extends RubyObject {
 
     @JRubyMethod
     public IRubyObject content(ThreadContext context) {
-        return this.internalNode.getContent(context);
+        if(this.content == null) {
+            String textContent = this.node.getTextContent();
+            if (textContent == null) textContent = "";
+            this.content = context.getRuntime().newString(textContent);
+        }
+
+        return this.content;
     }
 
     @JRubyMethod
     public IRubyObject document(ThreadContext context) {
-        return this.internalNode.getDocument(context);
+        if(this.doc == null) {
+            this.doc = fromNodeOrCreate(context,
+                    this.node.getOwnerDocument());
+        }
+
+        return this.doc;
     }
 
     @JRubyMethod
@@ -550,9 +667,8 @@ public class XmlNode extends RubyObject {
     }
 
     protected IRubyObject dup_implementation(ThreadContext context, boolean deep) {
-        Node newNode = this.internalNode.cloneNode(context, this, deep);
-
-        return new XmlNode(context.getRuntime(), this.getType(), newNode);
+        Node newNode = node.cloneNode(deep);
+        return constructNode(context.getRuntime(), newNode);
     }
 
     @JRubyMethod
@@ -564,7 +680,7 @@ public class XmlNode extends RubyObject {
 
     @JRubyMethod(visibility = Visibility.PRIVATE)
     public IRubyObject get(ThreadContext context, IRubyObject attribute) {
-        return this.internalNode.methods().get(context, this, attribute);
+        return context.getRuntime().getNil();
     }
 
     /**
@@ -572,10 +688,10 @@ public class XmlNode extends RubyObject {
      * document, or returns null if there is no owner.
      */
     protected Document getOwnerDocument() {
-        if (node().getNodeType() == Node.DOCUMENT_NODE) {
-            return (Document) node();
+        if (node.getNodeType() == Node.DOCUMENT_NODE) {
+            return (Document) node;
         } else {
-            return node().getOwnerDocument();
+            return node.getOwnerDocument();
         }
     }
 
@@ -609,12 +725,20 @@ public class XmlNode extends RubyObject {
 
     @JRubyMethod(name = "key?")
     public IRubyObject key_p(ThreadContext context, IRubyObject k) {
-        return this.internalNode.methods().key_p(context, this, k);
+        return context.getRuntime().getFalse();
     }
 
     @JRubyMethod
     public IRubyObject namespace(ThreadContext context){
-        return this.internalNode.getNamespace(context);
+        if(namespace == null) {
+            namespace = new XmlNamespace(context.getRuntime(), node.getPrefix(),
+                                         node.lookupNamespaceURI(node.getPrefix()));
+            if(((XmlNamespace) namespace).isEmpty()) {
+                namespace = context.getRuntime().getNil();
+            }
+        }
+
+        return namespace;
     }
 
     @JRubyMethod
@@ -632,7 +756,7 @@ public class XmlNode extends RubyObject {
     public IRubyObject namespaces(ThreadContext context) {
         Ruby ruby = context.getRuntime();
         RubyHash hash = RubyHash.newHash(ruby);
-        NamedNodeMap attrs = node().getAttributes();
+        NamedNodeMap attrs = node.getAttributes();
         for (int i = 0; i < attrs.getLength(); i++) {
             Node attr = attrs.item(i);
             hash.op_aset(context, RubyString.newString(ruby, attr.getNodeName()), RubyString.newString(ruby, attr.getNodeValue()));
@@ -640,11 +764,15 @@ public class XmlNode extends RubyObject {
         return hash;
     }
 
+    protected void setContent(IRubyObject content) {
+        RubyString newContent = content.convertToString();
+        this.content = newContent;
+        this.node.setTextContent(newContent.asJavaString());
+    }
+
     @JRubyMethod(name = "native_content=", visibility = Visibility.PRIVATE)
     public IRubyObject native_content_set(ThreadContext context, IRubyObject content) {
-        RubyString newContent = content.convertToString();
-        this.internalNode.setContent(newContent);
-        this.node().setTextContent(newContent.asJavaString());
+        setContent(content);
         return content;
     }
 
@@ -676,7 +804,7 @@ public class XmlNode extends RubyObject {
 
     @JRubyMethod
     public IRubyObject next_sibling(ThreadContext context) {
-        return constructNode(context.getRuntime(), node().getNextSibling());
+        return constructNode(context.getRuntime(), node.getNextSibling());
     }
 
     @JRubyMethod(meta = true, rest = true)
@@ -703,18 +831,19 @@ public class XmlNode extends RubyObject {
 
     @JRubyMethod
     public IRubyObject node_name(ThreadContext context) {
-        return this.internalNode.getNodeName(context);
+        return getNodeName(context);
     }
 
     @JRubyMethod(name = "node_name=")
     public IRubyObject node_name_set(ThreadContext context, IRubyObject nodeName) {
-        this.internalNode.methods().node_name_set(context, this, nodeName);
-        return nodeName;
+        String newName = nodeName.convertToString().asJavaString();
+        getOwnerDocument().renameNode(node, null, newName);
+        setName(nodeName);
+        return this;
     }
 
     @JRubyMethod(name = "[]=")
     public IRubyObject op_aset(ThreadContext context, IRubyObject index, IRubyObject val) {
-        this.internalNode.methods().op_aset(context, this, index, val);
         return val;
     }
 
@@ -724,90 +853,75 @@ public class XmlNode extends RubyObject {
          * Check if this node is the root node of the document.
          * If so, parent is the document.
          */
-        if(node().getOwnerDocument().getDocumentElement() == node()) {
+        if(node.getOwnerDocument().getDocumentElement() == node) {
             return document(context);
         } else {
-            return NokogiriHelpers.getCachedNodeOrCreate(context.getRuntime(), node().getParentNode());
+            return fromNode(context, node.getParentNode());
         }
-    }
-
-    @JRubyMethod(name = "parent=")
-    public IRubyObject parent_set(ThreadContext context, IRubyObject parent) {
-        Node otherNode = getNodeFromXmlNode(context, parent);
-        otherNode.appendChild(node());
-        return parent;
     }
 
     @JRubyMethod
     public IRubyObject path(ThreadContext context) {
-        return RubyString.newString(context.getRuntime(), NokogiriHelpers.getNodeCompletePath(this.node()));
+        return RubyString.newString(context.getRuntime(), NokogiriHelpers.getNodeCompletePath(this.node));
     }
 
     @JRubyMethod
     public IRubyObject pointer_id(ThreadContext context) {
-        return RubyFixnum.newFixnum(context.getRuntime(), this.node().hashCode());
+        return RubyFixnum.newFixnum(context.getRuntime(), this.node.hashCode());
     }
 
     @JRubyMethod
     public IRubyObject previous_sibling(ThreadContext context) {
-        return constructNode(context.getRuntime(), node().getPreviousSibling());
+        return constructNode(context.getRuntime(), node.getPreviousSibling());
     }
 
     @JRubyMethod
     public IRubyObject remove_attribute(ThreadContext context, IRubyObject name) {
-        this.internalNode.methods().remove_attribute(context, this, name);
-        return context.getRuntime().getNil();
-    }
-
-    @JRubyMethod(name="replace_with_node", visibility=Visibility.PROTECTED)
-    public IRubyObject replace(ThreadContext context, IRubyObject newNode) {
-        Node otherNode = getNodeFromXmlNode(context, newNode);
-
-        if(!otherNode.getOwnerDocument().equals(node().getOwnerDocument())) {
-            node().getOwnerDocument().adoptNode(otherNode);
-        }
-
-        node().getParentNode().replaceChild(otherNode, node());
-
-        ((XmlNode) newNode).relink_namespace(context);
-
         return this;
     }
 
     @JRubyMethod(visibility=Visibility.PRIVATE)
     public IRubyObject set_namespace(ThreadContext context, IRubyObject namespace) {
-        this.internalNode.setNamespace(namespace);
-        this.internalNode.resetNamespaceDefinitions();
+        //setNamespace(namespace);
         XmlNamespace ns = (XmlNamespace) namespace;
         String prefix = ns.prefix(context).convertToString().asJavaString();
         String href = ns.href(context).convertToString().asJavaString();
 
-        this.node().getOwnerDocument().renameNode(node(), href, NokogiriHelpers.newQName(prefix, node()));
+        this.node.getOwnerDocument().renameNode(node, href, NokogiriHelpers.newQName(prefix, node));
 
         return this;
     }
 
     @JRubyMethod
     public IRubyObject unlink(ThreadContext context) {
-        this.internalNode.methods().unlink(context, this);
+        if(node.getParentNode() == null) {
+            throw context.getRuntime().newRuntimeError("TYPE: " + node.getNodeType()+ " PARENT NULL");
+        } else {
+            node.getParentNode().removeChild(node);
+        }
+
         return this;
     }
 
+    /**
+     * FIXME: Is this libxml enum values?  To Java impl., these are
+     * magic numbers and anyone who cares should check Ruby class.
+     */
     @JRubyMethod(name = "node_type")
     public IRubyObject xmlType(ThreadContext context) {
-        return this.internalNode.methods().getNokogiriNodeType(context);
+        return context.getRuntime().newFixnum(0);
     }
-    
+
     @JRubyMethod
     public IRubyObject line(ThreadContext context) {
-        Node root = internalNode.getDocument(context).getDocument();
+        Node root = getOwnerDocument();
         int[] counter = new int[1];
         count(root, counter);
         return RubyFixnum.newFixnum(context.getRuntime(), counter[0]+1);
     }
-    
+
     private boolean count(Node node, int[] counter) {
-        if (node == this.getNode()) {
+        if (node == this.node) {
             return true;
         }
         NodeList list = node.getChildNodes();
@@ -821,45 +935,50 @@ public class XmlNode extends RubyObject {
         }
         return false;
     }
-    
+
     @JRubyMethod
     public IRubyObject next_element(ThreadContext context) {
-        Node node = this.getNode().getNextSibling();
+        Node nextNode = node.getNextSibling();
         Ruby ruby = context.getRuntime();
-        if (node == null) return ruby.getNil();
-        if (node instanceof Element) {
-            return new XmlElement(ruby, (RubyClass)ruby.getClassFromPath("Nokogiri::XML::Element"), node);
+        if (nextNode == null) return ruby.getNil();
+        if (nextNode instanceof Element) {
+            return new XmlElement(ruby, (RubyClass)ruby.getClassFromPath("Nokogiri::XML::Element"), nextNode);
         }
-        Node deeper = node.getNextSibling();
+        Node deeper = nextNode.getNextSibling();
         if (deeper == null) return ruby.getNil();
         return new XmlElement(ruby, (RubyClass)ruby.getClassFromPath("Nokogiri::XML::Element"), deeper);
     }
 
     @JRubyMethod
     public IRubyObject previous_element(ThreadContext context) {
-        Node node = this.getNode().getPreviousSibling();
+        Node prevNode = node.getPreviousSibling();
         Ruby ruby = context.getRuntime();
-        if (node == null) return ruby.getNil();
-        if (node instanceof Element) {
-            return new XmlElement(ruby, (RubyClass)ruby.getClassFromPath("Nokogiri::XML::Element"), node);
+        if (prevNode == null) return ruby.getNil();
+        if (prevNode instanceof Element) {
+            return new XmlElement(ruby, (RubyClass)ruby.getClassFromPath("Nokogiri::XML::Element"), prevNode);
         }
-        Node shallower = node.getPreviousSibling();
+        Node shallower = prevNode.getPreviousSibling();
         if (shallower == null) return ruby.getNil();
         return new XmlElement(ruby, (RubyClass)ruby.getClassFromPath("Nokogiri::XML::Element"), shallower);
     }
 
     protected enum AdoptScheme {
-        PREV_SIBLING, NEXT_SIBLING, REPLACEMENT;
+        CHILD, PREV_SIBLING, NEXT_SIBLING, REPLACEMENT;
     }
+
+    /**
+     * Adopt XmlNode <code>other</code> into the document of
+     * <code>this</code> using the specified scheme.
+     */
     protected IRubyObject adoptAs(ThreadContext context, AdoptScheme scheme,
-                               IRubyObject other) {
+                                  IRubyObject other) {
         Node thisNode = this.getNode();
         Node otherNode = asXmlNode(context, other).getNode();
 
-        try {
+         try {
             Document doc = thisNode.getOwnerDocument();
 
-            if (otherNode.getOwnerDocument() != doc) {
+            if (doc != null && doc != otherNode.getOwnerDocument()) {
                 Node ret = doc.adoptNode(otherNode);
                 if (ret == null) {
                     throw context.getRuntime()
@@ -870,6 +989,9 @@ public class XmlNode extends RubyObject {
             Node parent = thisNode.getParentNode();
 
             switch (scheme) {
+            case CHILD:
+                adoptAsChild(context, thisNode, otherNode);
+                break;
             case PREV_SIBLING:
                 adoptAsPrevSibling(context, parent, thisNode, otherNode);
                 break;
@@ -880,12 +1002,28 @@ public class XmlNode extends RubyObject {
                 adoptAsReplacement(context, parent, thisNode, otherNode);
                 break;
             }
-        } catch (Exception e) {
-            throw context.getRuntime().newRuntimeError(e.toString());
+         } catch (Exception e) {
+             throw context.getRuntime().newRuntimeError(e.toString());
+         }
+
+        if (otherNode.getNodeType() == Node.TEXT_NODE) {
+            coalesceTextNodesIntelligently(context,
+                                           null, // other.prev_sibling(),
+                                           other,
+                                           null); //other.next_sibling());
         }
+
+        //other.relink_namespace(context);
+        // post_add_child(context, this, other);
 
         return this;
     }
+
+    protected void adoptAsChild(ThreadContext context, Node parent,
+                                Node otherNode) {
+        parent.appendChild(otherNode);
+    }
+
 
     protected void adoptAsPrevSibling(ThreadContext context,
                                       Node parent,
