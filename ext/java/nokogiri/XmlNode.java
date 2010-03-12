@@ -911,12 +911,48 @@ public class XmlNode extends RubyObject {
     }
 
     /**
-     * FIXME: Is this libxml enum values?  To Java impl., these are
-     * magic numbers and anyone who cares should check Ruby class.
+     * The C-library simply returns libxml2 magic numbers.  Here we
+     * convert Java Xml nodes to the appropriate constant defined in
+     * xml/node.rb.
      */
-    @JRubyMethod(name = "node_type")
-    public IRubyObject xmlType(ThreadContext context) {
-        return context.getRuntime().newFixnum(0);
+    @JRubyMethod
+    public IRubyObject node_type(ThreadContext context) {
+
+        String type;
+        switch (node.getNodeType()) {
+        case Node.ELEMENT_NODE:
+            if (this instanceof XmlElementDecl)
+                type = "ELEMENT_DECL";
+            else if (this instanceof XmlAttributeDecl)
+                type = "ATTRIBUTE_DECL";
+            else if (this instanceof XmlEntityDecl)
+                type = "ENTITY_DECL";
+            else
+                type = "ELEMENT_NODE";
+            break;
+        case Node.ATTRIBUTE_NODE: type = "ATTRIBUTE_NODE"; break;
+        case Node.TEXT_NODE: type = "TEXT_NODE"; break;
+        case Node.CDATA_SECTION_NODE: type = "CDATA_SECTION_NODE"; break;
+        case Node.ENTITY_REFERENCE_NODE: type = "ENTITY_REF_NODE"; break;
+        case Node.ENTITY_NODE: type = "ENTITY_NODE"; break;
+        case Node.PROCESSING_INSTRUCTION_NODE: type = "PI_NODE"; break;
+        case Node.COMMENT_NODE: type = "COMMENT_NODE"; break;
+        case Node.DOCUMENT_NODE:
+            if (this instanceof HtmlDocument)
+                type = "HTML_DOCUMENT_NODE";
+            else
+                type = "DOCUMENT_NODE";
+            break;
+        case Node.DOCUMENT_TYPE_NODE: type = "DOCUMENT_TYPE_NODE"; break;
+        case Node.DOCUMENT_FRAGMENT_NODE: type = "DOCUMENT_FRAG_NODE"; break;
+        case Node.NOTATION_NODE: type = "NOTATION_NODE"; break;
+        default:
+            return context.getRuntime().newFixnum(0);
+        }
+
+        return context.getRuntime()
+            .getClassFromPath("Nokogiri::XML::Node")
+            .getConstant(type);
     }
 
     @JRubyMethod
