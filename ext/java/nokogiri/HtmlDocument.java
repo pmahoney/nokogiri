@@ -22,6 +22,25 @@ public class HtmlDocument extends XmlDocument {
         super(ruby, klazz, doc);
     }
 
+    @JRubyMethod(name="new", meta = true, rest = true, required=0)
+    public static IRubyObject rbNew(ThreadContext context, IRubyObject cls,
+                                    IRubyObject[] args) {
+        HtmlDocument doc = null;
+        try {
+            Document docNode =
+                (new ParseOptions(0)).getDocumentBuilder().newDocument();
+            doc = new HtmlDocument(context.getRuntime(), (RubyClass) cls,
+                                   docNode);
+        } catch (Exception ex) {
+            throw context.getRuntime()
+                .newRuntimeError("couldn't create document: "+ex.toString());
+        }
+
+        RuntimeHelpers.invoke(context, doc, "initialize", args);
+
+        return doc;
+    }
+
     @JRubyMethod(meta = true, rest = true)
     public static IRubyObject read_memory(ThreadContext context, IRubyObject cls, IRubyObject[] args) {
         
