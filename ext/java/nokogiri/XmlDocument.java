@@ -30,7 +30,6 @@ public class XmlDocument extends XmlNode {
     private static boolean loadExternalSubset = false; // TODO: Verify this.
 
     /** cache variables */
-    protected IRubyObject root = null;
     protected IRubyObject encoding = null;
     protected IRubyObject url = null;
 
@@ -180,14 +179,11 @@ public class XmlDocument extends XmlNode {
 
     @JRubyMethod
     public IRubyObject root(ThreadContext context) {
-        if(this.root == null) {
-            Node rootNode = getDocument().getDocumentElement();
-            if (rootNode == null)
-                root = context.getRuntime().getNil();
-            else
-                root = XmlNode.fromNodeOrCreate(context, rootNode);
-        }
-        return root;
+        Node rootNode = getDocument().getDocumentElement();
+        if (rootNode == null)
+            return context.getRuntime().getNil();
+        else
+            return XmlNode.fromNodeOrCreate(context, rootNode);
     }
 
     @JRubyMethod(name="root=")
@@ -195,7 +191,6 @@ public class XmlDocument extends XmlNode {
         Node rootNode = asXmlNode(context, root(context)).node;
         fromNode(context, rootNode)
             .replace_node(context, newRoot);
-        this.root = newRoot;
 
         return newRoot;
     }
