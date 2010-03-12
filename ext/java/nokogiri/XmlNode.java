@@ -1028,6 +1028,18 @@ public class XmlNode extends RubyObject {
 
     protected void adoptAsChild(ThreadContext context, Node parent,
                                 Node otherNode) {
+        /*
+         * This is a bit of a hack.  C-Nokogiri allows adding a bare
+         * text node as the root element.  Java (and XML spec?) does
+         * not.  So we wrap the text node in an element.
+         */
+        if (parent.getNodeType() == Node.DOCUMENT_NODE &&
+            otherNode.getNodeType() == Node.TEXT_NODE) {
+            Element e = ((Document)parent).createElement("text");
+            e.appendChild(otherNode);
+            otherNode = e;
+        }
+
         parent.appendChild(otherNode);
     }
 
