@@ -667,8 +667,15 @@ public class XmlNode extends RubyObject {
     }
 
     protected IRubyObject dup_implementation(ThreadContext context, boolean deep) {
+        XmlNode clone;
+        try {
+            clone = (XmlNode) clone();
+        } catch (CloneNotSupportedException e) {
+            throw context.getRuntime().newRuntimeError(e.toString());
+        }
         Node newNode = node.cloneNode(deep);
-        return constructNode(context.getRuntime(), newNode);
+        clone.node = newNode;
+        return clone;
     }
 
     public static IRubyObject encode_special_chars(ThreadContext context, IRubyObject string) {
