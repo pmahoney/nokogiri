@@ -671,11 +671,18 @@ public class XmlNode extends RubyObject {
         return constructNode(context.getRuntime(), newNode);
     }
 
-    @JRubyMethod
-    public IRubyObject encode_special_chars(ThreadContext context, IRubyObject string) {
+    public static IRubyObject encode_special_chars(ThreadContext context, IRubyObject string) {
         String s = string.convertToString().asJavaString();
         return RubyString.newString(context.getRuntime(),
                 NokogiriHelpers.encodeJavaString(s));
+    }
+
+    /**
+     * Instance method version of the above static method.
+     */
+    @JRubyMethod(name="encode_special_chars")
+    public IRubyObject i_encode_special_chars(ThreadContext context, IRubyObject string) {
+        return encode_special_chars(context, string);
     }
 
     @JRubyMethod(visibility = Visibility.PRIVATE)

@@ -17,10 +17,11 @@ public class XmlText extends XmlNode {
 
     @JRubyMethod(name = "new", meta = true)
     public static IRubyObject rbNew(ThreadContext context, IRubyObject cls, IRubyObject text, IRubyObject xNode) {
-        XmlNode xmlNode = (XmlNode)xNode;
+        XmlNode xmlNode = asXmlNode(context, xNode);
         XmlDocument xmlDoc = (XmlDocument)xmlNode.document(context);
         Document document = xmlDoc.getDocument();
-        Node node = document.createTextNode(text.convertToString().asJavaString());
+        String content = encode_special_chars(context, text).convertToString().asJavaString();
+        Node node = document.createTextNode(content);
         return XmlNode.constructNode(context.getRuntime(), node);
     }
 
@@ -37,9 +38,7 @@ public class XmlText extends XmlNode {
 
     @Override
     public void saveContentAsHtml(ThreadContext context, SaveContext ctx) {
-        ctx.append(NokogiriHelpers.encodeJavaString(
-                content(context).convertToString().asJavaString()
-                ));
+        ctx.append(content(context).convertToString().asJavaString());
     }
 
 }
