@@ -25,6 +25,7 @@ public class NokogiriService implements BasicLibraryService{
         RubyModule html = nokogiri.defineModuleUnder("HTML");
 
         RubyClass node = xml.defineClassUnder("Node", ruby.getObject(), XML_NODE_ALLOCATOR);
+        RubyClass char_data = xml.defineClassUnder("CharacterData", node, null);
 
         init_encoding_handler(ruby, nokogiri);
         init_xml_node(ruby, node);
@@ -50,7 +51,7 @@ public class NokogiriService implements BasicLibraryService{
         RubyClass schema = init_xml_schema(ruby, xml);
         init_xml_relaxng(ruby, xml, schema);
         init_xml_syntax_error(ruby, xml, nokogiri);
-        RubyClass text = init_xml_text(ruby, xml, node);
+        RubyClass text = init_xml_text(ruby, xml, char_data, node);
         init_xml_cdata(ruby, xml, text);
         init_xml_xpath(ruby, xml);
         init_xml_xpath_context(ruby, xml);
@@ -228,8 +229,8 @@ public class NokogiriService implements BasicLibraryService{
         syntaxError.defineAnnotatedMethods(XmlSyntaxError.class);
     }
 
-    public static RubyClass init_xml_text(Ruby ruby, RubyModule xml, RubyClass node) {
-        RubyClass text = xml.defineClassUnder("Text", node, XML_TEXT_ALLOCATOR);
+    public static RubyClass init_xml_text(Ruby ruby, RubyModule xml, RubyClass char_data, RubyClass node) {
+        RubyClass text = xml.defineClassUnder("Text", char_data, XML_TEXT_ALLOCATOR);
 
         text.defineAnnotatedMethods(XmlText.class);
 
