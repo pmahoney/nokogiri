@@ -2,12 +2,13 @@ package nokogiri.internals;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringReader;
 import javax.xml.parsers.ParserConfigurationException;
+import nokogiri.HtmlDocument;
 import nokogiri.XmlDocument;
 import org.apache.xerces.parsers.DOMParser;
 import org.apache.xerces.xni.parser.XMLParserConfiguration;
 import org.cyberneko.html.HTMLConfiguration;
+import org.jruby.RubyClass;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.w3c.dom.Document;
@@ -37,6 +38,14 @@ public class HtmlParseOptions extends ParseOptions{
     }
 
     @Override
+    protected XmlDocument wrapDocument(ThreadContext context,
+                                       RubyClass klass,
+                                       Document doc) {
+        return new HtmlDocument(context.getRuntime(), klass, doc);
+    }
+
+
+    @Override
     public Document parse(InputSource input)
             throws ParserConfigurationException, SAXException, IOException {
         XMLParserConfiguration config = new HTMLConfiguration();
@@ -57,18 +66,5 @@ public class HtmlParseOptions extends ParseOptions{
 
         parser.parse(input);
         return parser.getDocument();
-    }
-
-    @Override
-    public Document parse(InputStream input)
-            throws ParserConfigurationException, SAXException, IOException {
-        return this.parse(new InputSource(input));
-    }
-
-    @Override
-    public Document parse(String input)
-            throws ParserConfigurationException, SAXException, IOException {
-        StringReader sr = new StringReader(input);
-        return this.parse(new InputSource(sr));
     }
 }

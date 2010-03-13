@@ -41,27 +41,29 @@ public class HtmlDocument extends XmlDocument {
         return doc;
     }
 
-    @JRubyMethod(meta = true, rest = true)
-    public static IRubyObject read_memory(ThreadContext context, IRubyObject cls, IRubyObject[] args) {
-        
+    public static IRubyObject do_parse(ThreadContext context,
+                                       IRubyObject klass,
+                                       IRubyObject[] args) {
         Ruby ruby = context.getRuntime();
         Arity.checkArgumentCount(ruby, args, 4, 4);
-        ParseOptions options = new HtmlParseOptions(args[3]);
-        try {
-            Document document;
-            document = options.parse(args[0].convertToString().asJavaString());
-            HtmlDocument doc = new HtmlDocument(ruby, (RubyClass)cls, document);
-            doc.setUrl(args[1]);
-            options.addErrorsIfNecessary(context, doc);
-            return doc;
-        } catch (ParserConfigurationException pce) {
-            return options.getDocumentWithErrorsOrRaiseException(context, pce);
-        } catch (SAXException saxe) {
-            return options.getDocumentWithErrorsOrRaiseException(context, saxe);
-        } catch (IOException ioe) {
-            return options.getDocumentWithErrorsOrRaiseException(context, ioe);
-        }
+        ParseOptions parser = new HtmlParseOptions(args[3]);
+        return parser.parse(context, klass, args[0], args[1]);
     }
+
+    @JRubyMethod(meta = true, rest = true)
+    public static IRubyObject read_io(ThreadContext context,
+                                      IRubyObject cls,
+                                      IRubyObject[] args) {
+        return do_parse(context, cls, args);
+    }
+
+    @JRubyMethod(meta = true, rest = true)
+    public static IRubyObject read_memory(ThreadContext context,
+                                          IRubyObject cls,
+                                          IRubyObject[] args) {
+        return do_parse(context, cls, args);
+    }
+
 
     @JRubyMethod
     public static IRubyObject serialize(ThreadContext context, IRubyObject htmlDoc) {

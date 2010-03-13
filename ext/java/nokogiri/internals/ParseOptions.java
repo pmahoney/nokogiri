@@ -3,6 +3,7 @@ package nokogiri.internals;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -10,13 +11,19 @@ import nokogiri.XmlDocument;
 import nokogiri.XmlSyntaxError;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
+import org.jruby.RubyClass;
+import org.jruby.RubyIO;
+import org.jruby.RubyString;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.util.TypeConverter;
 import org.w3c.dom.Document;
 import org.xml.sax.EntityResolver;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+
+import static org.jruby.javasupport.util.RuntimeHelpers.invoke;
 
 /**
  *
@@ -133,6 +140,56 @@ public class ParseOptions {
         return this.recover;
     }
 
+    protected XmlDocument wrapDocument(ThreadContext context,
+                                       RubyClass klass,
+                                       Document doc) {
+        return new XmlDocument(context.getRuntime(), klass, doc);
+    }
+
+    public XmlDocument parse(ThreadContext context,
+                             IRubyObject klass,
+                             IRubyObject data,
+                             IRubyObject url) {
+        Ruby ruby = context.getRuntime();
+        InputSource source;
+
+        if (invoke(context, data, "respond_to?",
+                   ruby.newSymbol("to_io").to_sym()).isTrue()) {
+            /* IO or other object that responds to :to_io */
+            RubyIO io =
+                (RubyIO) TypeConverter.convertToType(data,
+                                                     ruby.getIO(),
+                                                     "to_io");
+            source = new InputSource(io.getInStream());
+        } else if (invoke(context, data, "respond_to?",
+                          ruby.newSymbol("string").to_sym()).isTrue()) {
+            /* StringIO or other object that responds to :string */
+            IRubyObject rbstr = invoke(context, data, "string");
+            String str = rbstr.convertToString().asJavaString();
+            source = new InputSource(new StringReader(str));
+        } else if (data instanceof RubyString) {
+            String str = data.convertToString().asJavaString();
+            source = new InputSource(new StringReader(str));
+        } else {
+            throw ruby.newArgumentError("must respond to :to_io or :string");
+        }
+
+        try {
+            Document doc = parse(source);
+            XmlDocument xmlDoc = wrapDocument(context, (RubyClass)klass, doc);
+            xmlDoc.setUrl(url);
+            addErrorsIfNecessary(context, xmlDoc);
+            return xmlDoc;
+        } catch (ParserConfigurationException e) {
+            return getDocumentWithErrorsOrRaiseException(context, e);
+        } catch (SAXException e) {
+            return getDocumentWithErrorsOrRaiseException(context, e);
+        } catch (IOException e) {
+            return getDocumentWithErrorsOrRaiseException(context, e);
+        }
+    }
+
+
     public Document parse(InputSource input)
             throws ParserConfigurationException, SAXException, IOException {
         return this.getDocumentBuilder().parse(input);
@@ -140,16 +197,16 @@ public class ParseOptions {
 
     public Document parse(InputStream input)
             throws ParserConfigurationException, SAXException, IOException {
-        return this.getDocumentBuilder().parse(input);
+        return parse(new InputSource(input));
     }
 
     public Document parse(String input)
             throws ParserConfigurationException, SAXException, IOException {
-        return this.getDocumentBuilder().parse(input);
+        return parse(new InputSource(new StringReader(input)));
     }
 
     public boolean dtdAttr() { return this.dtdAttr; }
-    
+
     public boolean dtdLoad() { return this.dtdLoad; }
 
     public boolean dtdValid() { return this.dtdValid; }
