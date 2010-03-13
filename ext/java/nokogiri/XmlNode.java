@@ -856,7 +856,7 @@ public class XmlNode extends RubyObject {
         if(node.getOwnerDocument().getDocumentElement() == node) {
             return document(context);
         } else {
-            return fromNode(context, node.getParentNode());
+            return fromNodeOrCreate(context, node.getParentNode());
         }
     }
 
