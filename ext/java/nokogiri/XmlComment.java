@@ -31,9 +31,4 @@ public class XmlComment extends XmlNode {
         ctx.append(content(context).convertToString().asJavaString());
         ctx.append("-->");
     }
-
-    @Override
-    public void saveContentAsHtml(ThreadContext context, SaveContext ctx) {
-        saveContent(context, ctx);
-    }
 }

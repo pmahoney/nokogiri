@@ -27,18 +27,6 @@ public class XmlText extends XmlNode {
 
     @Override
     public void saveContent(ThreadContext context, SaveContext ctx) {
-        if(ctx.format()) {
-            ctx.append(ctx.getCurrentIndentString());
-        }
-
-        ctx.append(NokogiriHelpers.encodeJavaString(
-                content(context).convertToString().asJavaString()
-                ));
-    }
-
-    @Override
-    public void saveContentAsHtml(ThreadContext context, SaveContext ctx) {
         ctx.append(content(context).convertToString().asJavaString());
     }
-
 }

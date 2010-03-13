@@ -92,14 +92,8 @@ public class HtmlDocument extends XmlDocument {
             ctx.append(">\n");
         }
 
-        this.saveNodeListContentAsHtml(context,
+        this.saveNodeListContent(context,
                 (XmlNodeSet) this.children(context), ctx);
-        
         ctx.append("\n");
-    }
-
-    @Override
-    public void saveContentAsHtml(ThreadContext context, SaveContext ctx) {
-        this.saveContent(context, ctx);
     }
 }

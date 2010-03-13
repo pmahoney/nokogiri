@@ -385,9 +385,6 @@ public class XmlNode extends RubyObject {
     public void saveContent(ThreadContext context, SaveContext ctx) {
     }
 
-    public void saveContentAsHtml(ThreadContext context, SaveContext ctx) {
-    }
-
     public void setName(IRubyObject name) {
         this.name = name;
     }
@@ -486,29 +483,14 @@ public class XmlNode extends RubyObject {
         for(int i = 0; i < length; i++) {
             XmlNode cur = (XmlNode) array.get(i);
 
-            if(formatIndentation &&
-                    (cur.isElement() || cur.isComment() || cur.isProcessingInstruction())) {
-                ctx.append(ctx.getCurrentIndentString());
-            }
+            // if(formatIndentation &&
+            //         (cur.isElement() || cur.isComment() || cur.isProcessingInstruction())) {
+            //     ctx.append(ctx.getCurrentIndentString());
+            // }
 
             cur.saveContent(context, ctx);
 
-            if(ctx.format()) ctx.append("\n");
-        }
-    }
-
-    protected void saveNodeListContentAsHtml(ThreadContext context, XmlNodeSet list, SaveContext ctx) {
-        saveNodeListContentAsHtml(context, (RubyArray) list.to_a(context), ctx);
-    }
-
-    protected void saveNodeListContentAsHtml(ThreadContext context, RubyArray array, SaveContext ctx) {
-        int length = array.getLength();
-
-        boolean formatIndentation = ctx.format() && ctx.indentString()!=null;
-
-        for(int i = 0; i < length; i++) {
-            XmlNode cur = (XmlNode) array.get(i);
-            cur.saveContentAsHtml(context, ctx);
+            // if(ctx.format()) ctx.append("\n");
         }
     }
 
@@ -790,8 +772,16 @@ public class XmlNode extends RubyObject {
         return content;
     }
 
+    /**
+     * @param args {IRubyObject io,
+     *              IRubyObject encoding,
+     *              IRubyObject indentString,
+     *              IRubyObject options}
+     */
     @JRubyMethod(required=4, visibility=Visibility.PRIVATE)
-    public IRubyObject native_write_to(ThreadContext context, IRubyObject[] args) {//IRubyObject io, IRubyObject encoding, IRubyObject indentString, IRubyObject options) {
+    public IRubyObject native_write_to(ThreadContext context,
+                                       IRubyObject[] args) {
+
         IRubyObject io = args[0];
         IRubyObject encoding = args[1];
         IRubyObject indentString = args[2];
@@ -805,11 +795,7 @@ public class XmlNode extends RubyObject {
                 indentString.convertToString().asJavaString(),
                 encString);
 
-        if(ctx.asHtml()){
-            this.saveContentAsHtml(context, ctx);
-        } else {
-            this.saveContent(context, ctx);
-        }
+        saveContent(context, ctx);
 
         RuntimeHelpers.invoke(context, io, "write", context.getRuntime().newString(ctx.toString()));
 

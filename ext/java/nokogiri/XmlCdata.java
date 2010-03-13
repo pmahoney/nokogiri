@@ -44,10 +44,4 @@ public class XmlCdata extends XmlText {
             ctx.append("]]>");
         }
     }
-
-    @Override
-    public void saveContentAsHtml(ThreadContext context, SaveContext ctx) {
-        this.saveContent(context, ctx);
-    }
-
 }

@@ -55,6 +55,8 @@ public class XmlAttr extends XmlNode{
 
 
     private String serializeAttrTextContent(String s) {
+        if (s == null) return "";
+
         char[] c = s.toCharArray();
         StringBuffer buffer = new StringBuffer(c.length);
 
@@ -85,30 +87,15 @@ public class XmlAttr extends XmlNode{
     @Override
     public void saveContent(ThreadContext context, SaveContext ctx) {
         Attr attr = (Attr) node;
-        ctx.append(" ");
-        ctx.append(attr.getNodeName());
-        ctx.append("=\"");
-        ctx.append(serializeAttrTextContent(attr.getValue()));
-        ctx.append("\"");
-    }
 
-    @Override
-    public void saveContentAsHtml(ThreadContext context, SaveContext ctx) {
-        Attr attr = (Attr) node;
-        ctx.append(" ");
-
+        ctx.maybeSpace();
         ctx.append(attr.getNodeName());
 
-        if(!this.isHtmlBooleanAttr()) {
-            String value = attr.getValue();
-            if(value != null) {
-                ctx.append("=");
-                ctx.append("\"");
-                ctx.append(serializeAttrTextContent(attr.getValue()));
-                ctx.append("\"");
-            } else {
-                ctx.append("=\"\"");
-            }
+        if (!ctx.asHtml() || !isHtmlBooleanAttr()) {
+            ctx.append("=");
+            ctx.append("\"");
+            ctx.append(serializeAttrTextContent(attr.getValue()));
+            ctx.append("\"");
         }
     }
 
