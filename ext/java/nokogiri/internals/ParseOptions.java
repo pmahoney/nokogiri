@@ -3,7 +3,6 @@ package nokogiri.internals;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringReader;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -24,6 +23,7 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import static org.jruby.javasupport.util.RuntimeHelpers.invoke;
+import static nokogiri.internals.NokogiriHelpers.rubyStringToString;
 
 /**
  *
@@ -146,10 +146,8 @@ public class ParseOptions {
         return new XmlDocument(context.getRuntime(), klass, doc);
     }
 
-    public XmlDocument parse(ThreadContext context,
-                             IRubyObject klass,
-                             IRubyObject data,
-                             IRubyObject url) {
+    protected InputSource createInputSource(ThreadContext context,
+                                            IRubyObject data) {
         Ruby ruby = context.getRuntime();
         InputSource source;
 
@@ -161,18 +159,32 @@ public class ParseOptions {
                                                      ruby.getIO(),
                                                      "to_io");
             source = new InputSource(io.getInStream());
-        } else if (invoke(context, data, "respond_to?",
-                          ruby.newSymbol("string").to_sym()).isTrue()) {
-            /* StringIO or other object that responds to :string */
-            IRubyObject rbstr = invoke(context, data, "string");
-            String str = rbstr.convertToString().asJavaString();
-            source = new InputSource(new StringReader(str));
-        } else if (data instanceof RubyString) {
-            String str = data.convertToString().asJavaString();
-            source = new InputSource(new StringReader(str));
         } else {
-            throw ruby.newArgumentError("must respond to :to_io or :string");
+            RubyString str;
+            if (invoke(context, data, "respond_to?",
+                          ruby.newSymbol("string").to_sym()).isTrue()) {
+                /* StringIO or other object that responds to :string */
+                str = invoke(context, data, "string").convertToString();
+            } else if (data instanceof RubyString) {
+                str = (RubyString) data;
+            } else {
+                throw ruby.newArgumentError(
+                    "must be kind_of String or respond to :to_io or :string");
+            }
+
+            byte[] bytes = rubyStringToString(str).getBytes();
+            source = new InputSource(new ByteArrayInputStream(bytes));
         }
+
+        return source;
+    }
+
+    public XmlDocument parse(ThreadContext context,
+                             IRubyObject klass,
+                             IRubyObject data,
+                             IRubyObject url) {
+        Ruby ruby = context.getRuntime();
+        InputSource source = createInputSource(context, data);
 
         try {
             Document doc = parse(source);
@@ -200,10 +212,10 @@ public class ParseOptions {
         return parse(new InputSource(input));
     }
 
-    public Document parse(String input)
-            throws ParserConfigurationException, SAXException, IOException {
-        return parse(new InputSource(new StringReader(input)));
-    }
+    // public Document parse(String input)
+    //         throws ParserConfigurationException, SAXException, IOException {
+    //     return parse(new InputSource(new StringReader(input)));
+    // }
 
     public boolean dtdAttr() { return this.dtdAttr; }
 

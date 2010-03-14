@@ -17,6 +17,7 @@ import org.xml.sax.SAXException;
 import org.xml.sax.ext.DefaultHandler2;
 
 import static org.jruby.javasupport.util.RuntimeHelpers.invoke;
+import static nokogiri.internals.NokogiriHelpers.rubyStringToString;
 
 public class HtmlSaxParserContext extends XmlSaxParserContext {
     private SAXParser parser;
@@ -39,7 +40,7 @@ public class HtmlSaxParserContext extends XmlSaxParserContext {
 
     @JRubyMethod(name="memory", meta=true)
     public static IRubyObject parse_memory(ThreadContext context, IRubyObject klazz, IRubyObject data, IRubyObject encoding) {
-        String input = data.convertToString().asJavaString();
+        String input = rubyStringToString(data);
 
 		HtmlSaxParserContext ctx = new HtmlSaxParserContext(context.getRuntime(), (RubyClass) klazz);
 

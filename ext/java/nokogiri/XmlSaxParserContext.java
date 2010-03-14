@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import nokogiri.internals.NokogiriHandler;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
@@ -25,6 +26,7 @@ import org.xml.sax.ext.DefaultHandler2;
 import org.xml.sax.helpers.XMLReaderFactory;
 
 import static org.jruby.javasupport.util.RuntimeHelpers.invoke;
+import static nokogiri.internals.NokogiriHelpers.rubyStringToString;
 
 public class XmlSaxParserContext extends RubyObject {
     private InputSource source;
@@ -42,14 +44,18 @@ public class XmlSaxParserContext extends RubyObject {
 
     @JRubyMethod(name="memory", meta=true)
     public static IRubyObject parse_memory(ThreadContext context, IRubyObject klazz, IRubyObject data) {
-        ByteList byteList = data.convertToString().getByteList();
-		ByteArrayInputStream bais = new ByteArrayInputStream(byteList.unsafeBytes(), byteList.begin(), byteList.length());
+        byte[] bytes;
+        bytes = rubyStringToString(data).getBytes();
+        ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
 
-		XmlSaxParserContext ctx = new XmlSaxParserContext(context.getRuntime(), (RubyClass) klazz);
+        XmlSaxParserContext ctx = new XmlSaxParserContext(context.getRuntime(),
+                                                          (RubyClass) klazz);
 
-		ctx.source = new InputSource(bais);
+        InputSource source = new InputSource(bais);
 
-		return ctx;
+        ctx.source = source;
+
+        return ctx;
     }
 
     @JRubyMethod(name="file", meta=true)

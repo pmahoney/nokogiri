@@ -5,9 +5,13 @@
 
 package nokogiri.internals;
 
+import java.nio.charset.Charset;
+import java.nio.ByteBuffer;
+
 import nokogiri.XmlNode;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
+import org.jruby.RubyString;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Node;
@@ -46,6 +50,41 @@ public class NokogiriHelpers {
     public static String getLocalNameForNamespace(String name) {
         String localName = getLocalName(name);
         return ("xmlns".equals(localName)) ? null : localName;
+    }
+
+    protected static Charset utf8 = null;
+    protected static Charset getCharsetUTF8() {
+        if (utf8 == null) {
+            utf8 = Charset.forName("UTF-8");
+        }
+
+        return utf8;
+    }
+
+    /**
+     * Converts a RubyString in to a Java String.  Assumes the
+     * RubyString is encoded as UTF-8.  This is generally the case for
+     * RubyStrings created with getRuntime().newString("java string").
+     * It also seems to be the case for strings created within Ruby
+     * where $KCODE has not been set.
+     *
+     * Note that RubyString#toString() decodes the string data as
+     * ISO-8859-1 (See org.jruby.util.ByteList.java).  This is not
+     * what you want if you have any multibyte characters in your
+     * UTF-8 string.
+     *
+     * FIXME: This really needs to be more robust in terms of
+     * detecting the encoding and properly converting to a Java
+     * String.  It's unfortunate that RubyString#toString() doesn't do
+     * this for us.
+     */
+    public static String rubyStringToString(IRubyObject str) {
+        return rubyStringToString(str.convertToString());
+    }
+
+    public static String rubyStringToString(RubyString str) {
+        byte[] data = str.getByteList().unsafeBytes();
+        return getCharsetUTF8().decode(ByteBuffer.wrap(data)).toString();
     }
 
     public static String getNodeCompletePath(Node node) {

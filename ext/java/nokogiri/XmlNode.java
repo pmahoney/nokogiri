@@ -41,6 +41,7 @@ import org.xml.sax.SAXException;
 import static java.lang.Math.max;
 import static nokogiri.internals.NokogiriHelpers.getCachedNodeOrCreate;
 import static nokogiri.internals.NokogiriHelpers.isNamespace;
+import static nokogiri.internals.NokogiriHelpers.rubyStringToString;
 
 public class XmlNode extends RubyObject {
 
@@ -660,17 +661,19 @@ public class XmlNode extends RubyObject {
         return clone;
     }
 
-    public static IRubyObject encode_special_chars(ThreadContext context, IRubyObject string) {
-        String s = string.convertToString().asJavaString();
-        return RubyString.newString(context.getRuntime(),
-                NokogiriHelpers.encodeJavaString(s));
+    public static IRubyObject encode_special_chars(ThreadContext context,
+                                                   IRubyObject string) {
+        String s = rubyStringToString(string);
+        String enc = NokogiriHelpers.encodeJavaString(s);
+        return context.getRuntime().newString(enc);
     }
 
     /**
      * Instance method version of the above static method.
      */
     @JRubyMethod(name="encode_special_chars")
-    public IRubyObject i_encode_special_chars(ThreadContext context, IRubyObject string) {
+    public IRubyObject i_encode_special_chars(ThreadContext context,
+                                              IRubyObject string) {
         return encode_special_chars(context, string);
     }
 
@@ -761,9 +764,8 @@ public class XmlNode extends RubyObject {
     }
 
     protected void setContent(IRubyObject content) {
-        RubyString newContent = content.convertToString();
-        this.content = newContent;
-        this.node.setTextContent(newContent.asJavaString());
+        this.content = content;
+        this.node.setTextContent(rubyStringToString(content));
     }
 
     @JRubyMethod(name = "native_content=", visibility = Visibility.PRIVATE)
@@ -797,7 +799,8 @@ public class XmlNode extends RubyObject {
 
         saveContent(context, ctx);
 
-        RuntimeHelpers.invoke(context, io, "write", context.getRuntime().newString(ctx.toString()));
+        RuntimeHelpers.invoke(context, io, "write",
+                              ctx.toRubyString(context.getRuntime()));
 
         return io;
     }

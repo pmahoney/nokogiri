@@ -1,6 +1,8 @@
 package nokogiri.internals;
 
 import java.lang.Character;
+import org.jruby.Ruby;
+import org.jruby.RubyString;
 
 /**
  *
@@ -215,6 +217,10 @@ public class SaveContext {
 
     @Override
     public String toString() { return this.buffer.toString(); }
+
+    public RubyString toRubyString(Ruby runtime) {
+        return new RubyString(runtime, runtime.getString(), buffer);
+    }
 
     public boolean Xhtml() { return this.xhtml; }
 }

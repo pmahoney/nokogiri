@@ -1,14 +1,18 @@
 package nokogiri;
 
+import java.lang.RuntimeException;
 import nokogiri.internals.NokogiriHelpers;
 import nokogiri.internals.SaveContext;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
+import org.jruby.RubyString;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
+
+import static nokogiri.internals.NokogiriHelpers.rubyStringToString;
 
 public class XmlText extends XmlNode {
     public XmlText(Ruby ruby, RubyClass rubyClass, Node node) {
@@ -20,13 +24,14 @@ public class XmlText extends XmlNode {
         XmlNode xmlNode = asXmlNode(context, xNode);
         XmlDocument xmlDoc = (XmlDocument)xmlNode.document(context);
         Document document = xmlDoc.getDocument();
-        String content = encode_special_chars(context, text).convertToString().asJavaString();
+        String content = rubyStringToString(encode_special_chars(context, text));
         Node node = document.createTextNode(content);
         return XmlNode.constructNode(context.getRuntime(), node);
     }
 
+
     @Override
     public void saveContent(ThreadContext context, SaveContext ctx) {
-        ctx.append(content(context).convertToString().asJavaString());
+        ctx.append(rubyStringToString(content(context)));
     }
 }
