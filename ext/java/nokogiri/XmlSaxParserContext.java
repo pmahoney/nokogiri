@@ -241,6 +241,9 @@ public class XmlSaxParserContext extends ParserContext {
             else
                 break;
         }
+
+        // While we have a document, normalize it.
+        ((XmlNode) doc).normalize();
     }
 
     protected boolean isWhitespaceText(ThreadContext context, IRubyObject obj) {

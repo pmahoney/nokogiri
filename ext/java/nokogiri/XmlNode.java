@@ -258,6 +258,13 @@ public class XmlNode extends RubyObject {
         this.node = toAssimilate.node;
     }
 
+    /**
+     * See org.w3.dom.Node#normalize.
+     */
+    public void normalize() {
+        node.normalize();
+    }
+
     protected RubyArray getNsDefinitions(Ruby ruby) {
         if (this.namespace_definitions == null) {
             RubyArray arr = ruby.newArray();
