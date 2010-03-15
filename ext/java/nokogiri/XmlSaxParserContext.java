@@ -8,9 +8,12 @@ import nokogiri.internals.ParserContext;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.RubyIO;
+import org.jruby.RubyModule;
 import org.jruby.RubyObject;
+import org.jruby.RubyObjectAdapter;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
+import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.javasupport.util.RuntimeHelpers;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.Visibility;
@@ -128,9 +131,20 @@ public class XmlSaxParserContext extends ParserContext {
         reader.setErrorHandler(handler);
     }
 
+
+    /**
+     * Perform any initialization prior to parsing with the handler
+     * <code>handlerRuby</code>. Convenience hook for subclasses.
+     */
+    protected void initParseWith(ThreadContext context,
+                                 IRubyObject handlerRuby) {
+        // noop
+    }
+
     @JRubyMethod()
     public IRubyObject parse_with(ThreadContext context,
                                   IRubyObject handlerRuby) {
+        initParseWith(context, handlerRuby);
         Ruby ruby = context.getRuntime();
 
         if(!invoke(context, handlerRuby, "respond_to?",
@@ -178,7 +192,66 @@ public class XmlSaxParserContext extends ParserContext {
             throw ruby.newIOErrorFromException(ioe);
         }
 
+        maybeTrimLeadingAndTrailingWhitespace(context, handlerRuby);
+
         return this;
+    }
+
+    /**
+     * If the handler's document is a FragmentHandler, attempt to trim
+     * leading and trailing whitespace.
+     *
+     * This is a bit hackish and depends heavily on the internals of
+     * FragmentHandler.
+     */
+    protected void maybeTrimLeadingAndTrailingWhitespace(ThreadContext context,
+                                                         IRubyObject parser) {
+        final String path = "Nokogiri::XML::FragmentHandler";
+        RubyObjectAdapter adapter = JavaEmbedUtils.newObjectAdapter();
+        RubyModule mod =
+            context.getRuntime().getClassFromPath(path);
+
+        IRubyObject handler = adapter.getInstanceVariable(parser, "@document");
+        if (handler == null || handler.isNil() || !adapter.isKindOf(handler, mod))
+            return;
+        IRubyObject stack = adapter.getInstanceVariable(handler, "@stack");
+        if (stack == null || stack.isNil())
+            return;
+        // doc is finally a DocumentFragment whose nodes we can check
+        IRubyObject doc = adapter.callMethod(stack, "first");
+        if (doc == null || doc.isNil())
+            return;
+
+        IRubyObject children;
+
+        for (;;) {
+            children = adapter.callMethod(doc, "children");
+            IRubyObject first = adapter.callMethod(children, "first");
+            if (isWhitespaceText(context, first))
+                adapter.callMethod(first, "unlink");
+            else
+                break;
+        }
+
+        for (;;) {
+            children = adapter.callMethod(doc, "children");
+            IRubyObject last = adapter.callMethod(children, "last");
+            if (isWhitespaceText(context, last))
+                adapter.callMethod(last, "unlink");
+            else
+                break;
+        }
+    }
+
+    protected boolean isWhitespaceText(ThreadContext context, IRubyObject obj) {
+        if (obj == null || obj.isNil()) return false;
+
+        XmlNode node = (XmlNode) obj;
+        if (!(node instanceof XmlText))
+            return false;
+
+        String content = rubyStringToString(node.content(context));
+        return content.trim().isEmpty();
     }
 
     /**
