@@ -76,19 +76,19 @@ public class SaveContext {
     }
 
     public void emptyTagStart(String name) {
-        if (noEmpty()) {
-            openTagInlineStart(name);
-        } else {
-            maybeBreak();
-            indent();
-            append("<"); append(name);
-        }
+        openTagInlineStart(name);
     }
 
     public void emptyTagEnd(String name) {
-        if (noEmpty()) {
-            openTagInlineEnd();
-            closeTagInline(name);
+        if (asHtml) {
+            if (noEmpty()) {
+                append(">");
+            } else {
+                openTagInlineEnd();
+                closeTagInline(name);
+            }
+        } else if (xhtml) {
+            append(" />");
         } else {
             append("/>");
         }
