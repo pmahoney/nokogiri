@@ -13,6 +13,7 @@ import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyString;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.jruby.util.ByteList;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -83,8 +84,12 @@ public class NokogiriHelpers {
     }
 
     public static String rubyStringToString(RubyString str) {
-        byte[] data = str.getByteList().unsafeBytes();
-        return getCharsetUTF8().decode(ByteBuffer.wrap(data)).toString();
+        ByteList byteList = str.getByteList();
+        byte[] data = byteList.unsafeBytes();
+        int offset = byteList.begin();
+        int len = byteList.length();
+        ByteBuffer buf = ByteBuffer.wrap(data, offset, len);
+        return getCharsetUTF8().decode(buf).toString();
     }
 
     public static String getNodeCompletePath(Node node) {
