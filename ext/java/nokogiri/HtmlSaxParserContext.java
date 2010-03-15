@@ -7,8 +7,12 @@ import nokogiri.internals.NokogiriHandler;
 import org.cyberneko.html.parsers.SAXParser;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
+import org.jruby.RubyModule;
+import org.jruby.RubyObject;
+import org.jruby.RubyObjectAdapter;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
+import org.jruby.javasupport.JavaEmbedUtils;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.xml.sax.ContentHandler;
@@ -92,6 +96,25 @@ public class HtmlSaxParserContext extends XmlSaxParserContext {
     protected void do_parse() throws SAXException, IOException {
         parser.parse(source);
     }
+
+    @Override
+    protected void initParseWith(ThreadContext context,
+                                 IRubyObject handlerRuby) {
+        final String path = "Nokogiri::XML::FragmentHandler";
+        final String docFrag =
+            "http://cyberneko.org/html/features/balance-tags/document-fragment";
+        RubyObjectAdapter adapter = JavaEmbedUtils.newObjectAdapter();
+        IRubyObject doc = adapter.getInstanceVariable(handlerRuby, "@document");
+        RubyModule mod =
+            context.getRuntime().getClassFromPath(path);
+        try {
+            if (doc != null && !doc.isNil() && adapter.isKindOf(doc, mod))
+                parser.setFeature(docFrag, true);
+        } catch (Exception e) {
+            // ignore
+        }
+    }
+
 
     @Override
     protected void setProperty(String key, Object val)
