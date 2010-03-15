@@ -184,15 +184,13 @@ public class NokogiriHandler extends DefaultHandler2 {
             return ruby.newString(this.qName);
         }
 
-        public RubyString getPrefix() {
+        public IRubyObject getPrefix() {
             int pos = this.qName.indexOf(':');
-            String prefix;
             if (pos > 0) {
-                prefix = this.qName.substring(0, pos);
+                return ruby.newString(this.qName.substring(0, pos));
             } else {
-                prefix = this.qName;
+                return ruby.getNil();
             }
-            return ruby.newString(prefix);
         }
 
         public RubyString getLocalname() {
