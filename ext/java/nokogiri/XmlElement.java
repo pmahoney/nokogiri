@@ -18,6 +18,8 @@ import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import static nokogiri.internals.NokogiriHelpers.rubyStringToString;
+
 /**
  *
  * @author sergio
@@ -60,10 +62,10 @@ public class XmlElement extends XmlNode {
     public boolean isElement() { return true; }
 
     @Override
-    public IRubyObject get(ThreadContext context, IRubyObject key) {
-        String keyString = key.convertToString().asJavaString();
+    public IRubyObject get(ThreadContext context, IRubyObject rbkey) {
+        String key = rubyStringToString(rbkey);
         Element element = (Element) node;
-        String value = element.getAttribute(keyString);
+        String value = element.getAttribute(key);
         if(!value.equals("")){
             return context.getRuntime().newString(value);
         }
@@ -71,20 +73,20 @@ public class XmlElement extends XmlNode {
     }
 
     @Override
-    public IRubyObject key_p(ThreadContext context, IRubyObject k) {
-        Ruby ruby = context.getRuntime();
-        String key = k.convertToString().asJavaString();
+    public IRubyObject key_p(ThreadContext context, IRubyObject rbkey) {
+        String key = rubyStringToString(rbkey);
         Element element = (Element) node;
-        return ruby.newBoolean(element.hasAttribute(key));
+        return context.getRuntime().newBoolean(element.hasAttribute(key));
     }
 
     @Override
-    public IRubyObject op_aset(ThreadContext context, IRubyObject index,
-                               IRubyObject val) {
-        String key = index.convertToString().asJavaString();
-        String value = val.convertToString().asJavaString();
+    public IRubyObject op_aset(ThreadContext context,
+                               IRubyObject rbkey,
+                               IRubyObject rbval) {
+        String key = rubyStringToString(rbkey);
+        String val = rubyStringToString(rbval);
         Element element = (Element) node;
-        element.setAttribute(key, value);
+        element.setAttribute(key, val);
         return this;
     }
 

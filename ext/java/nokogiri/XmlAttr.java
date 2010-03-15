@@ -11,6 +11,8 @@ import org.w3c.dom.Attr;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
+import static nokogiri.internals.NokogiriHelpers.rubyStringToString;
+
 public class XmlAttr extends XmlNode{
 
     public static final String[] HTML_BOOLEAN_ATTRS = {
@@ -40,7 +42,7 @@ public class XmlAttr extends XmlNode{
         XmlDocument xmlDoc = (XmlDocument)doc;
 
         return new XmlAttr(context.getRuntime(),
-                xmlDoc.getDocument().createAttribute(content.convertToString().asJavaString()));
+                           xmlDoc.getDocument().createAttribute(content.convertToString().asJavaString()));
     }
 
     public boolean isHtmlBooleanAttr() {
@@ -62,14 +64,14 @@ public class XmlAttr extends XmlNode{
 
         for(int i = 0; i < c.length; i++) {
             switch(c[i]){
-                case '\n': buffer.append("&#10;"); break;
-                case '\r': buffer.append("&#13;"); break;
-                case '\t': buffer.append("&#9;"); break;
-                case '"': buffer.append("&quot;"); break;
-                case '<': buffer.append("&lt;"); break;
-                case '>': buffer.append("&gt;"); break;
-                case '&': buffer.append("&amp;"); break;
-                default: buffer.append(c[i]);
+            case '\n': buffer.append("&#10;"); break;
+            case '\r': buffer.append("&#13;"); break;
+            case '\t': buffer.append("&#9;"); break;
+            case '"': buffer.append("&quot;"); break;
+            case '<': buffer.append("&lt;"); break;
+            case '>': buffer.append("&gt;"); break;
+            case '&': buffer.append("&amp;"); break;
+            default: buffer.append(c[i]);
             }
         }
 
@@ -77,7 +79,7 @@ public class XmlAttr extends XmlNode{
     }
 
     @JRubyMethod(name="value=")
-    public IRubyObject value_set(ThreadContext context, IRubyObject content){
+        public IRubyObject value_set(ThreadContext context, IRubyObject content){
         Attr attr = (Attr) node;
         attr.setValue(this.encode_special_chars(context, content).convertToString().asJavaString());
         setContent(content);
@@ -89,7 +91,7 @@ public class XmlAttr extends XmlNode{
         Attr attr = (Attr) node;
 
         ctx.maybeSpace();
-        ctx.append(attr.getNodeName());
+        ctx.append(rubyStringToString(getNodeName(context)));
 
         if (!ctx.asHtml() || !isHtmlBooleanAttr()) {
             ctx.append("=");

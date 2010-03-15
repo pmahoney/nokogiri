@@ -677,8 +677,13 @@ public class XmlNode extends RubyObject {
         return encode_special_chars(context, string);
     }
 
+    /**
+     * Get the attribute at the given key, <code>rbkey</code>.
+     * Assumes that this node has attributes (i.e. that key? returned
+     * true). Overridden in XmlElement.
+     */
     @JRubyMethod(visibility = Visibility.PRIVATE)
-    public IRubyObject get(ThreadContext context, IRubyObject attribute) {
+    public IRubyObject get(ThreadContext context, IRubyObject rbkey) {
         return context.getRuntime().getNil();
     }
 
@@ -722,9 +727,13 @@ public class XmlNode extends RubyObject {
         throw context.getRuntime().newNotImplementedError("not implemented");
     }
 
+    /**
+     * Test if this node has an attribute named <code>rbkey</code>.
+     * Overridden in XmlElement.
+     */
     @JRubyMethod(name = "key?")
-    public IRubyObject key_p(ThreadContext context, IRubyObject k) {
-        return context.getRuntime().getFalse();
+    public IRubyObject key_p(ThreadContext context, IRubyObject rbkey) {
+        return context.getRuntime().getNil();
     }
 
     @JRubyMethod
