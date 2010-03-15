@@ -1,9 +1,8 @@
 package nokogiri;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.io.IOException;
-import java.io.StringReader;
+
 import nokogiri.internals.NokogiriHandler;
 import org.cyberneko.html.parsers.SAXParser;
 import org.jruby.Ruby;
@@ -12,84 +11,102 @@ import org.jruby.anno.JRubyMethod;
 import org.jruby.exceptions.RaiseException;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
-import org.xml.sax.InputSource;
+import org.xml.sax.ContentHandler;
+import org.xml.sax.ErrorHandler;
 import org.xml.sax.SAXException;
-import org.xml.sax.ext.DefaultHandler2;
+import org.xml.sax.SAXNotSupportedException;
+import org.xml.sax.SAXNotRecognizedException;
 
 import static org.jruby.javasupport.util.RuntimeHelpers.invoke;
 import static nokogiri.internals.NokogiriHelpers.rubyStringToString;
 
 public class HtmlSaxParserContext extends XmlSaxParserContext {
     private SAXParser parser;
-    private InputSource source;
 
     public HtmlSaxParserContext(Ruby ruby, RubyClass rubyClass) {
         super(ruby, rubyClass);
 
-        
-		this.parser = new SAXParser();
+        this.parser = new SAXParser();
 
-		try{
-			this.parser.setProperty("http://cyberneko.org/html/properties/names/elems", "match");
-			this.parser.setProperty("http://cyberneko.org/html/properties/names/attrs", "no-change");
-		} catch(Exception ex) {
-			System.out.println("Problem while creating HTML SAX Parser: "+ex.toString());
-		}
-        
+        try{
+            this.parser.setProperty(
+                "http://cyberneko.org/html/properties/names/elems", "match");
+            this.parser.setProperty(
+                "http://cyberneko.org/html/properties/names/attrs", "no-change");
+        } catch(Exception ex) {
+            throw ruby.newRuntimeError(
+                "Problem while creating HTML SAX Parser: " + ex.toString());
+        }
+
     }
 
     @JRubyMethod(name="memory", meta=true)
-    public static IRubyObject parse_memory(ThreadContext context, IRubyObject klazz, IRubyObject data, IRubyObject encoding) {
-        String input = rubyStringToString(data);
-
-		HtmlSaxParserContext ctx = new HtmlSaxParserContext(context.getRuntime(), (RubyClass) klazz);
-
-		ctx.source = new InputSource(new StringReader(input));
-
-		return ctx;
-    }
-
-    @JRubyMethod(name="file", meta=true)
-    public static IRubyObject parse_file(ThreadContext context, IRubyObject klazz, IRubyObject data, IRubyObject encoding) {
-        String file = data.convertToString().asJavaString();
-
-		HtmlSaxParserContext ctx = new HtmlSaxParserContext(context.getRuntime(), (RubyClass) klazz);
-
-		try {
-		    ctx.source = new InputSource(new FileInputStream(file));
-	    } catch (FileNotFoundException ex) {}
-
+    public static IRubyObject parse_memory(ThreadContext context,
+                                           IRubyObject klazz,
+                                           IRubyObject data,
+                                           IRubyObject encoding) {
+        HtmlSaxParserContext ctx =
+            new HtmlSaxParserContext(context.getRuntime(), (RubyClass) klazz);
+        ctx.setInputSource(context, data);
         return ctx;
     }
 
-	@JRubyMethod()
-	public IRubyObject parse_with(ThreadContext context, IRubyObject handlerRuby) {
-		Ruby ruby = context.getRuntime();
+    @JRubyMethod(name="file", meta=true)
+    public static IRubyObject parse_file(ThreadContext context,
+                                         IRubyObject klazz,
+                                         IRubyObject data,
+                                         IRubyObject encoding) {
+        HtmlSaxParserContext ctx =
+            new HtmlSaxParserContext(context.getRuntime(), (RubyClass) klazz);
+        ctx.setInputSourceFile(context, data);
+        return ctx;
+    }
 
-		if(!invoke(context, handlerRuby, "kind_of?",
-				ruby.getClassFromPath("Nokogiri::XML::SAX::Parser")).isTrue()) {
-			throw ruby.newArgumentError("argument must be a Nokogiri::XML::SAX::Parser");
-		}
+    @JRubyMethod(name="io", meta=true)
+    public static IRubyObject parse_io(ThreadContext context,
+                                       IRubyObject klazz,
+                                       IRubyObject data,
+                                       IRubyObject enc) {
+        //int encoding = (int)enc.convertToInteger().getLongValue();
+        HtmlSaxParserContext ctx =
+            new HtmlSaxParserContext(context.getRuntime(), (RubyClass) klazz);
+        ctx.setInputSource(context, data);
+        return ctx;
+    }
 
-		DefaultHandler2 handler = new NokogiriHandler(ruby, handlerRuby);
+    /**
+     * Create a new parser context that will read from a raw input
+     * stream. Not a JRuby method.  Meant to be run in a separate
+     * thread by XmlSaxPushParser.
+     */
+    public static IRubyObject parse_stream(ThreadContext context,
+                                           IRubyObject klazz,
+                                           InputStream stream) {
+        XmlSaxParserContext ctx =
+            new XmlSaxParserContext(context.getRuntime(), (RubyClass)klazz);
+        ctx.setInputSource(stream);
+        return ctx;
+    }
 
-		this.parser.setContentHandler(handler);
-		this.parser.setErrorHandler(handler);
+    @Override
+    protected void do_parse() throws SAXException, IOException {
+        parser.parse(source);
+    }
 
-		try{
-			this.parser.setProperty("http://xml.org/sax/properties/lexical-handler", handler);
-		} catch(Exception ex) {
-			System.out.println("Problem while creating HTML SAX Parser: "+ex.toString());
-		}
+    @Override
+    protected void setProperty(String key, Object val)
+        throws SAXNotRecognizedException, SAXNotSupportedException {
+        parser.setProperty(key, val);
+    }
 
-		try{
-			this.parser.parse(this.source);
-		} catch(SAXException se) {
-			throw RaiseException.createNativeRaiseException(ruby, se);
-		} catch(IOException ioe) {
-			throw ruby.newIOErrorFromException(ioe);
-		}
+    @Override
+    protected void setContentHandler(ContentHandler handler) {
+        parser.setContentHandler(handler);
+    }
 
-		return this;
-	}
+    @Override
+    protected void setErrorHandler(ErrorHandler handler) {
+        parser.setErrorHandler(handler);
+    }
+
 }
