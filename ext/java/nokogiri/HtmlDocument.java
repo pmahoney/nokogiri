@@ -2,8 +2,7 @@ package nokogiri;
 
 import java.io.IOException;
 import javax.xml.parsers.ParserConfigurationException;
-import nokogiri.internals.HtmlParseOptions;
-import nokogiri.internals.ParseOptions;
+import nokogiri.internals.HtmlDomParserContext;
 import nokogiri.internals.SaveContext;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
@@ -27,8 +26,9 @@ public class HtmlDocument extends XmlDocument {
                                     IRubyObject[] args) {
         HtmlDocument doc = null;
         try {
-            Document docNode =
-                (new ParseOptions(0)).getDocumentBuilder().newDocument();
+            HtmlDomParserContext ctx =
+                new HtmlDomParserContext(context.getRuntime(), 0);
+            Document docNode = ctx.getDocumentBuilder().newDocument();
             doc = new HtmlDocument(context.getRuntime(), (RubyClass) cls,
                                    docNode);
         } catch (Exception ex) {
@@ -46,8 +46,10 @@ public class HtmlDocument extends XmlDocument {
                                        IRubyObject[] args) {
         Ruby ruby = context.getRuntime();
         Arity.checkArgumentCount(ruby, args, 4, 4);
-        ParseOptions parser = new HtmlParseOptions(args[3]);
-        return parser.parse(context, klass, args[0], args[1]);
+        HtmlDomParserContext ctx =
+            new HtmlDomParserContext(ruby, args[3]);
+        ctx.setInputSource(context, args[0]);
+        return ctx.parse(context, klass, args[1]);
     }
 
     @JRubyMethod(meta = true, rest = true)

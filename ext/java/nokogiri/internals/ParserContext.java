@@ -3,6 +3,7 @@ package nokogiri.internals;
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.io.StringReader;
 
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
@@ -69,8 +70,15 @@ public abstract class ParserContext extends RubyObject {
                     "must be kind_of String or respond to :to_io or :string");
             }
 
-            byte[] bytes = rubyStringToString(str).getBytes();
-            source = new InputSource(new ByteArrayInputStream(bytes));
+            // I don't know why ByteArrayInputStream doesn't
+            // work... It's a similar problem to that
+            // rubyStringToString is supposed to solve (treating Ruby
+            // string data as UTF-8).  But StringReader seems to work,
+            // so going with it. -- Patrick
+
+            //byte[] bytes = rubyStringToString(str).getBytes();
+            //source = new InputSource(new ByteArrayInputStream(bytes));
+            source = new InputSource(new StringReader(rubyStringToString(str)));
         }
     }
 

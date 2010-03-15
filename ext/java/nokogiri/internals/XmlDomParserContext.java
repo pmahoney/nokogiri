@@ -29,7 +29,7 @@ import static nokogiri.internals.NokogiriHelpers.rubyStringToString;
  *
  * @author sergio
  */
-public class ParseOptions {
+public class XmlDomParserContext extends ParserContext {
 
     public static final long STRICT = 0;
     public static final long RECOVER = 1;
@@ -55,11 +55,13 @@ public class ParseOptions {
 
     protected NokogiriErrorHandler errorHandler;
 
-    public ParseOptions(IRubyObject options) {
-        this(options.convertToInteger().getLongValue());
+    public XmlDomParserContext(Ruby runtime, IRubyObject options) {
+        this(runtime, options.convertToInteger().getLongValue());
     }
 
-    public ParseOptions(long options) {
+    public XmlDomParserContext(Ruby runtime, long options) {
+        super(runtime);
+
         if(options == STRICT) {
             this.strict = true;
             this.recover = this.noEnt = this.dtdLoad = this.dtdAttr =
@@ -140,54 +142,26 @@ public class ParseOptions {
         return this.recover;
     }
 
+    /**
+     * This method is broken out so that HtmlDomParserContext can
+     * override it.
+     */
     protected XmlDocument wrapDocument(ThreadContext context,
                                        RubyClass klass,
                                        Document doc) {
         return new XmlDocument(context.getRuntime(), klass, doc);
     }
 
-    protected InputSource createInputSource(ThreadContext context,
-                                            IRubyObject data) {
-        Ruby ruby = context.getRuntime();
-        InputSource source;
-
-        if (invoke(context, data, "respond_to?",
-                   ruby.newSymbol("to_io").to_sym()).isTrue()) {
-            /* IO or other object that responds to :to_io */
-            RubyIO io =
-                (RubyIO) TypeConverter.convertToType(data,
-                                                     ruby.getIO(),
-                                                     "to_io");
-            source = new InputSource(io.getInStream());
-        } else {
-            RubyString str;
-            if (invoke(context, data, "respond_to?",
-                          ruby.newSymbol("string").to_sym()).isTrue()) {
-                /* StringIO or other object that responds to :string */
-                str = invoke(context, data, "string").convertToString();
-            } else if (data instanceof RubyString) {
-                str = (RubyString) data;
-            } else {
-                throw ruby.newArgumentError(
-                    "must be kind_of String or respond to :to_io or :string");
-            }
-
-            byte[] bytes = rubyStringToString(str).getBytes();
-            source = new InputSource(new ByteArrayInputStream(bytes));
-        }
-
-        return source;
-    }
-
+    /**
+     * Must call setInputSource() before this method.
+     */
     public XmlDocument parse(ThreadContext context,
                              IRubyObject klass,
-                             IRubyObject data,
                              IRubyObject url) {
         Ruby ruby = context.getRuntime();
-        InputSource source = createInputSource(context, data);
 
         try {
-            Document doc = parse(source);
+            Document doc = do_parse();
             XmlDocument xmlDoc = wrapDocument(context, (RubyClass)klass, doc);
             xmlDoc.setUrl(url);
             addErrorsIfNecessary(context, xmlDoc);
@@ -201,21 +175,10 @@ public class ParseOptions {
         }
     }
 
-
-    public Document parse(InputSource input)
-            throws ParserConfigurationException, SAXException, IOException {
-        return this.getDocumentBuilder().parse(input);
+    protected Document do_parse()
+        throws ParserConfigurationException, SAXException, IOException {
+        return getDocumentBuilder().parse(getInputSource());
     }
-
-    public Document parse(InputStream input)
-            throws ParserConfigurationException, SAXException, IOException {
-        return parse(new InputSource(input));
-    }
-
-    // public Document parse(String input)
-    //         throws ParserConfigurationException, SAXException, IOException {
-    //     return parse(new InputSource(new StringReader(input)));
-    // }
 
     public boolean dtdAttr() { return this.dtdAttr; }
 

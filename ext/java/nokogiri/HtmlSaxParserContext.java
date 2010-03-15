@@ -82,8 +82,8 @@ public class HtmlSaxParserContext extends XmlSaxParserContext {
     public static IRubyObject parse_stream(ThreadContext context,
                                            IRubyObject klazz,
                                            InputStream stream) {
-        XmlSaxParserContext ctx =
-            new XmlSaxParserContext(context.getRuntime(), (RubyClass)klazz);
+        HtmlSaxParserContext ctx =
+            new HtmlSaxParserContext(context.getRuntime(), (RubyClass)klazz);
         ctx.setInputSource(stream);
         return ctx;
     }

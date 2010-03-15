@@ -5,7 +5,7 @@ import java.io.IOException;
 import javax.xml.parsers.ParserConfigurationException;
 
 import nokogiri.internals.NokogiriUserDataHandler;
-import nokogiri.internals.ParseOptions;
+import nokogiri.internals.XmlDomParserContext;
 import nokogiri.internals.SaveContext;
 import nokogiri.internals.XmlDtdParser;
 import org.jruby.Ruby;
@@ -73,7 +73,9 @@ public class XmlDocument extends XmlNode {
     public static IRubyObject rbNew(ThreadContext context, IRubyObject cls, IRubyObject[] args) {
         XmlDocument doc = null;
         try {
-            Document docNode = (new ParseOptions(0)).getDocumentBuilder().newDocument();
+            XmlDomParserContext ctx =
+                new XmlDomParserContext(context.getRuntime(), 0);
+            Document docNode = ctx.getDocumentBuilder().newDocument();
             doc = new XmlDocument(context.getRuntime(), (RubyClass) cls,
                                   docNode);
         } catch (Exception ex) {
@@ -124,27 +126,38 @@ public class XmlDocument extends XmlNode {
      * @param args[2] encoding
      * @param args[3] bitset of parser options
      */
-    public static IRubyObject do_parse(ThreadContext context,
-                                       IRubyObject klass,
-                                       IRubyObject[] args) {
+    public static IRubyObject newFromData(ThreadContext context,
+                                          IRubyObject klass,
+                                          IRubyObject[] args) {
         Ruby ruby = context.getRuntime();
         Arity.checkArgumentCount(ruby, args, 4, 4);
-        ParseOptions parser = new ParseOptions(args[3]);
-        return parser.parse(context, klass, args[0], args[1]);
+        XmlDomParserContext ctx =
+            new XmlDomParserContext(ruby, args[3]);
+        ctx.setInputSource(context, args[0]);
+        return ctx.parse(context, klass, args[1]);
     }
 
     @JRubyMethod(meta = true, rest = true)
     public static IRubyObject read_io(ThreadContext context,
                                       IRubyObject klass,
                                       IRubyObject[] args) {
-        return do_parse(context, klass, args);
+        return newFromData(context, klass, args);
     }
 
     @JRubyMethod(meta = true, rest = true)
     public static IRubyObject read_memory(ThreadContext context,
                                           IRubyObject klass,
                                           IRubyObject[] args) {
-        return do_parse(context, klass, args);
+        return newFromData(context, klass, args);
+    }
+
+    /** not a JRubyMethod */
+    public static IRubyObject read_memory(ThreadContext context,
+                                          IRubyObject[] args) {
+        return read_memory(context,
+                           context.getRuntime()
+                           .getClassFromPath("Nokogiri::XML::Document"),
+                           args);
     }
 
     @JRubyMethod

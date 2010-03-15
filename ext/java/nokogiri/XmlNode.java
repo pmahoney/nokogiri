@@ -8,7 +8,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import nokogiri.internals.NokogiriNamespaceCache;
 import nokogiri.internals.NokogiriUserDataHandler;
-import nokogiri.internals.ParseOptions;
+import nokogiri.internals.XmlDomParserContext;
 import nokogiri.internals.SaveContext;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
@@ -811,25 +811,11 @@ public class XmlNode extends RubyObject {
     }
 
     @JRubyMethod(meta = true, rest = true)
-    public static IRubyObject new_from_str(ThreadContext context, IRubyObject cls, IRubyObject[] args) {
-        // TODO: duplicating code from Document.read_memory
-        Ruby ruby = context.getRuntime();
-        Arity.checkArgumentCount(ruby, args, 4, 4);
-        ParseOptions options = new ParseOptions(args[3]);
-        try {
-            Document document;
-            RubyString content = args[0].convertToString();
-            ByteList byteList = content.getByteList();
-            ByteArrayInputStream bais = new ByteArrayInputStream(byteList.unsafeBytes(), byteList.begin(), byteList.length());
-            document = options.getDocumentBuilder().parse(bais);
-            return constructNode(ruby, document.getFirstChild());
-        } catch (ParserConfigurationException pce) {
-            throw RaiseException.createNativeRaiseException(ruby, pce);
-        } catch (SAXException saxe) {
-            throw RaiseException.createNativeRaiseException(ruby, saxe);
-        } catch (IOException ioe) {
-            throw RaiseException.createNativeRaiseException(ruby, ioe);
-        }
+    public static IRubyObject new_from_str(ThreadContext context,
+                                           IRubyObject cls,
+                                           IRubyObject[] args) {
+        XmlDocument doc = (XmlDocument) XmlDocument.read_memory(context, args);
+        return doc.root(context);
     }
 
     @JRubyMethod

@@ -8,6 +8,7 @@ import nokogiri.XmlDocument;
 import org.apache.xerces.parsers.DOMParser;
 import org.apache.xerces.xni.parser.XMLParserConfiguration;
 import org.cyberneko.html.HTMLConfiguration;
+import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
@@ -19,14 +20,14 @@ import org.xml.sax.SAXException;
  *
  * @author sergio
  */
-public class HtmlParseOptions extends ParseOptions{
+public class HtmlDomParserContext extends XmlDomParserContext {
 
-    public HtmlParseOptions(IRubyObject options) {
-        super(options);
+    public HtmlDomParserContext(Ruby runtime, IRubyObject options) {
+        super(runtime, options);
     }
 
-    public HtmlParseOptions(long options) {
-        super(options);
+    public HtmlDomParserContext(Ruby runtime, long options) {
+        super(runtime, options);
     }
 
     @Override
@@ -46,11 +47,13 @@ public class HtmlParseOptions extends ParseOptions{
 
 
     @Override
-    public Document parse(InputSource input)
-            throws ParserConfigurationException, SAXException, IOException {
+    public Document do_parse()
+        throws ParserConfigurationException, SAXException, IOException {
         XMLParserConfiguration config = new HTMLConfiguration();
-        config.setProperty("http://cyberneko.org/html/properties/names/elems", "lower");
-        config.setProperty("http://cyberneko.org/html/properties/names/attrs", "lower");
+        config.setProperty("http://cyberneko.org/html/properties/names/elems",
+                           "lower");
+        config.setProperty("http://cyberneko.org/html/properties/names/attrs",
+                           "lower");
 
         DOMParser parser = new DOMParser(config);
         parser.setFeature("http://xml.org/sax/features/namespaces", false);
@@ -64,7 +67,7 @@ public class HtmlParseOptions extends ParseOptions{
 //                }
 //              }});
 
-        parser.parse(input);
+        parser.parse(getInputSource());
         return parser.getDocument();
     }
 }
