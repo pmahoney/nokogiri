@@ -30,9 +30,9 @@ public class HtmlSaxParserContext extends XmlSaxParserContext {
 
         try{
             this.parser.setProperty(
-                "http://cyberneko.org/html/properties/names/elems", "match");
+                "http://cyberneko.org/html/properties/names/elems", "lower");
             this.parser.setProperty(
-                "http://cyberneko.org/html/properties/names/attrs", "no-change");
+                "http://cyberneko.org/html/properties/names/attrs", "lower");
         } catch(Exception ex) {
             throw ruby.newRuntimeError(
                 "Problem while creating HTML SAX Parser: " + ex.toString());
