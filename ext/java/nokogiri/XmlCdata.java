@@ -23,7 +23,7 @@ public class XmlCdata extends XmlText {
         XmlDocument xmlDoc =(XmlDocument) ((XmlNode) doc).document(context);
         Document document = xmlDoc.getDocument();
         Node node = document.createCDATASection((text.isNil()) ? null : text.convertToString().asJavaString());
-        XmlNode cdata = (XmlNode) XmlNode.constructNode(context.getRuntime(), node);
+        XmlNode cdata = new XmlCdata(context.getRuntime(), (RubyClass) cls, node);
 
         RuntimeHelpers.invoke(context, cdata, "initialize", args);
 

@@ -19,7 +19,7 @@ public class XmlComment extends XmlNode {
         XmlDocument xmlDoc = (XmlDocument)doc;
         Document document = xmlDoc.getDocument();
         Node node = document.createComment(text.convertToString().asJavaString());
-        return XmlNode.constructNode(context.getRuntime(), node);
+        return new XmlComment(context.getRuntime(), (RubyClass) cls, node);
     }
 
     @Override
