@@ -40,9 +40,12 @@ public class XmlAttr extends XmlNode{
         }
 
         XmlDocument xmlDoc = (XmlDocument)doc;
+        String str = rubyStringToString(content);
+        Node attr = xmlDoc.getDocument().createAttribute(str);
 
         return new XmlAttr(context.getRuntime(),
-                           xmlDoc.getDocument().createAttribute(content.convertToString().asJavaString()));
+                           (RubyClass) cls,
+                           attr);
     }
 
     public boolean isHtmlBooleanAttr() {
