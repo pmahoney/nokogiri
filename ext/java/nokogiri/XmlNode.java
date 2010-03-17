@@ -767,18 +767,6 @@ public class XmlNode extends RubyObject {
             context.getRuntime().getFalse() : context.getRuntime().getTrue();
     }
 
-    @JRubyMethod
-    public IRubyObject namespaces(ThreadContext context) {
-        Ruby ruby = context.getRuntime();
-        RubyHash hash = RubyHash.newHash(ruby);
-        NamedNodeMap attrs = node.getAttributes();
-        for (int i = 0; i < attrs.getLength(); i++) {
-            Node attr = attrs.item(i);
-            hash.op_aset(context, RubyString.newString(ruby, attr.getNodeName()), RubyString.newString(ruby, attr.getNodeValue()));
-        }
-        return hash;
-    }
-
     protected void setContent(IRubyObject content) {
         this.content = content;
         this.node.setTextContent(rubyStringToString(content));

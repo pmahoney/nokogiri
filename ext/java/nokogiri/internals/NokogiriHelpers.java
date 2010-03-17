@@ -101,7 +101,8 @@ public class NokogiriHelpers {
         String sep;
         String name;
 
-        int occur = 0, generic;
+        int occur = 0;
+        boolean generic;
 
         cur = node;
 
@@ -109,7 +110,7 @@ public class NokogiriHelpers {
             name = "";
             sep = "?";
             occur = 0;
-            generic = 0;
+            generic = false;
 
             if(cur.getNodeType() == Node.DOCUMENT_NODE) {
                 if(buffer.startsWith("/")) break;
@@ -117,15 +118,16 @@ public class NokogiriHelpers {
                 sep = "/";
                 next = null;
             } else if(cur.getNodeType() == Node.ELEMENT_NODE) {
-                generic = 0;
+                generic = false;
                 sep = "/";
 
                 name = cur.getLocalName();
+                if (name == null) name = cur.getNodeName();
                 if(cur.getNamespaceURI() != null) {
                     if(cur.getPrefix() != null) {
                         name = cur.getPrefix() + ":" + name;
                     } else {
-                        generic = 1;
+                        generic = true;
                         name = "*";
                     }
                 }
@@ -140,7 +142,7 @@ public class NokogiriHelpers {
 
                 while(tmp != null) {
                     if((tmp.getNodeType() == Node.ELEMENT_NODE) &&
-                        (generic != 0 || compareTwoNodes(tmp,cur))) {
+                       (generic || fullNamesMatch(tmp, cur))) {
                         occur++;
                     }
                     tmp = tmp.getPreviousSibling();
@@ -151,7 +153,7 @@ public class NokogiriHelpers {
 
                     while(tmp != null && occur == 0) {
                         if((tmp.getNodeType() == Node.ELEMENT_NODE) &&
-                            (generic != 0 || compareTwoNodes(tmp,cur))) {
+                            (generic || fullNamesMatch(tmp,cur))) {
                             occur++;
                         }
                         tmp = tmp.getNextSibling();
@@ -301,6 +303,23 @@ public class NokogiriHelpers {
                nodesAreEqual(m.getPrefix(), n.getPrefix());
     }
 
+    protected static boolean fullNamesMatch(Node a, Node b) {
+        return getFullName(a).equals(getFullName(b));
+    }
+
+    protected static String getFullName(Node n) {
+        String lname = n.getLocalName();
+        String prefix = n.getPrefix();
+        if (lname != null) {
+            if (prefix != null)
+                return prefix + ":" + lname;
+            else
+                return lname;
+        } else {
+            return n.getNodeName();
+        }
+    }
+
     private static boolean nodesAreEqual(Object a, Object b) {
       return (((a == null) && (a == null)) ||
                 (a != null) && (b != null) &&
@@ -336,7 +355,7 @@ public class NokogiriHelpers {
     }
 
     public static boolean isNamespace(String string) {
-        return string.equals("xmlns") || string.startsWith("xmlns:");
+        return string.startsWith("xmlns:");
     }
 
     public static String newQName(String newPrefix, Node node) {
