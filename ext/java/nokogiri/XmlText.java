@@ -26,7 +26,7 @@ public class XmlText extends XmlNode {
         Document document = xmlDoc.getDocument();
         String content = rubyStringToString(encode_special_chars(context, text));
         Node node = document.createTextNode(content);
-        return XmlNode.constructNode(context.getRuntime(), node);
+        return new XmlText(context.getRuntime(), (RubyClass) cls, node);
     }
 
 
