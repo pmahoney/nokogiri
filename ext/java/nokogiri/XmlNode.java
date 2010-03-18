@@ -41,6 +41,7 @@ import org.xml.sax.SAXException;
 import static java.lang.Math.max;
 import static nokogiri.internals.NokogiriHelpers.getCachedNodeOrCreate;
 import static nokogiri.internals.NokogiriHelpers.isNamespace;
+import static nokogiri.internals.NokogiriHelpers.isNonDefaultNamespace;
 import static nokogiri.internals.NokogiriHelpers.rubyStringToString;
 
 public class XmlNode extends RubyObject {
@@ -265,6 +266,13 @@ public class XmlNode extends RubyObject {
         node.normalize();
     }
 
+    /**
+     * Return an array of XmlNamespace nodes based on the attributes
+     * of this node.  Do not include default,
+     * e.g. <code>xmlns="http://example.com"</code>, but only include
+     * prefix definitions,
+     * e.g. <code>xmlns:prefix="http://example.com/"</code>.
+     */
     protected RubyArray getNsDefinitions(Ruby ruby) {
         if (this.namespace_definitions == null) {
             RubyArray arr = ruby.newArray();
@@ -276,7 +284,7 @@ public class XmlNode extends RubyObject {
 
             for(int i = 0; i < nodes.getLength(); i++) {
                 Node n = nodes.item(i);
-                if(isNamespace(n)) {
+                if(isNonDefaultNamespace(n)) {
                     arr.append(XmlNamespace.fromNode(ruby, n));
                 }
             }

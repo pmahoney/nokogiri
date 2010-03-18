@@ -350,12 +350,19 @@ public class NokogiriHelpers {
         }
     }
 
+    public static final String XMLNS_URI =
+        "http://www.w3.org/2000/xmlns/";
     public static boolean isNamespace(Node node) {
-        return isNamespace(node.getNodeName());
+        return (XMLNS_URI.equals(node.getNamespaceURI()) ||
+                isNamespace(node.getNodeName()));
     }
 
-    public static boolean isNamespace(String string) {
-        return string.startsWith("xmlns:");
+    public static boolean isNamespace(String nodeName) {
+        return (nodeName.equals("xmlns") || nodeName.startsWith("xmlns:"));
+    }
+
+    public static boolean isNonDefaultNamespace(Node node) {
+        return (isNamespace(node) && ! "xmlns".equals(node.getNodeName()));
     }
 
     public static String newQName(String newPrefix, Node node) {
