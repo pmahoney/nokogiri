@@ -37,11 +37,15 @@ import static nokogiri.internals.NokogiriHelpers.rubyStringToString;
 public class XmlSaxParserContext extends ParserContext {
     private XMLReader reader;
 
+    protected static final String FEATURE_NAMESPACE_PREFIXES =
+        "http://xml.org/sax/features/namespace-prefixes";
+
     public XmlSaxParserContext(final Ruby ruby, RubyClass rubyClass) {
         super(ruby, rubyClass);
 
         try {
             reader = XMLReaderFactory.createXMLReader();
+            reader.setFeature(FEATURE_NAMESPACE_PREFIXES, true);
         } catch (SAXException se) {
             throw RaiseException.createNativeRaiseException(ruby, se);
         }
