@@ -92,9 +92,13 @@ public class NokogiriHandler extends DefaultHandler2 {
     @Override
     public void startElement(String uri, String localName, String qName,
                              Attributes attrs) throws SAXException {
-        RubyArray rubyAttributes = RubyArray.newArray(ruby);
-        RubyArray rubyNS = RubyArray.newArray(ruby);
-        boolean hasNS = false;
+        // for attributes other than namespace attrs
+        RubyArray rubyAttr = RubyArray.newArray(ruby);
+        // for namespace defining attributes
+        RubyArray rubyNSAttr = RubyArray.newArray(ruby);
+        // for all attributes
+        RubyArray rubyAllAttr = RubyArray.newArray(ruby);
+
         ThreadContext context = ruby.getCurrentContext();
 
         for (int i = 0; i < attrs.getLength(); i++) {
@@ -108,12 +112,11 @@ public class NokogiriHandler extends DefaultHandler2 {
             if (ln == null || ln.equals("")) ln = getLocalPart(qn);
 
             if (isNamespace(qn)) {
-                hasNS = true;
                 RubyArray ns = RubyArray.newArray(ruby, 2);
                 if (ln.equals("xmlns")) ln = null;
                 ns.add(stringOrNil(ruby, ln));
                 ns.add(ruby.newString(val));
-                rubyNS.add(ns);
+                rubyNSAttr.add(ns);
             } else {
                 IRubyObject[] args = new IRubyObject[4];
                 args[0] = stringOrNil(ruby, ln);
@@ -123,21 +126,22 @@ public class NokogiriHandler extends DefaultHandler2 {
 
                 IRubyObject attr =
                     RuntimeHelpers.invoke(context, attrClass, "new", args);
-                rubyAttributes.add(attr);
+                rubyAttr.add(attr);
             }
+
+            rubyAllAttr.add(stringOrNil(ruby, qn));
+            rubyAllAttr.add(stringOrNil(ruby, val));
         }
 
-        // FIXME: when to use start_element ?
-        if (true || hasNS) {
-            call("start_element_namespace",
-                 stringOrNil(ruby, qName),
-                 rubyAttributes,
-                 stringOrNil(ruby, getPrefix(qName)),
-                 stringOrNil(ruby, uri),
-                 rubyNS);
-        } else {
-            call("start_element", ruby.newString(qName), rubyAttributes);
-        }
+        call("start_element_namespace",
+             stringOrNil(ruby, localName),
+             rubyAttr,
+             stringOrNil(ruby, getPrefix(qName)),
+             stringOrNil(ruby, uri),
+             rubyNSAttr);
+
+        // SAX v1 interface?  FIXME: when to call this?
+        //call("start_element", ruby.newString(qName), rubyAllAttr);
     }
 
     @Override
