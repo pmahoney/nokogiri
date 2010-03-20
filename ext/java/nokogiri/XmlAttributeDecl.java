@@ -12,13 +12,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
 /**
- * DTD attribute declaration.  This extends XmlNode but the
- * implementation breaks the XmlNode convention of a separate
- * XmlAttributeDeclImpl class.  Thus many XmlNode methods can be
- * expected to fail...
- *
- * TODO: either convert to the XmlNode convention or change XmlNode
- * and descendents to follow XmlAttributeDecl's (simpler?) convention.
+ * DTD attribute declaration.
  *
  * @author Patrick Mahoney <pat@polycrystal.org>
  */
@@ -74,7 +68,7 @@ public class XmlAttributeDecl extends XmlNode {
         RubyArray enumVals = RubyArray.newArray(context.getRuntime());
         String atype = ((Element)node).getAttribute("atype");
 
-        if (atype != null && atype.charAt(0) == '(') {
+        if (atype != null && !atype.isEmpty() && atype.charAt(0) == '(') {
             // removed enclosing parens
             String valueStr = atype.substring(1, atype.length() - 1);
             String[] values = valueStr.split("\\|");

@@ -1,5 +1,6 @@
 package nokogiri;
 
+import nokogiri.internals.XmlDtdParser;
 import org.cyberneko.dtd.DTDConfiguration;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
@@ -7,7 +8,9 @@ import org.jruby.RubyClass;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
+import org.w3c.dom.Document;
 import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 public class XmlDtd extends XmlNode {
     public static RubyClass getClass(Ruby ruby) {
@@ -24,6 +27,26 @@ public class XmlDtd extends XmlNode {
 
     public XmlDtd(Ruby ruby, RubyClass rubyClass, Node node) {
         super(ruby, rubyClass, node);
+    }
+
+    /**
+     * Create an unparented element that contains DTD declarations
+     * parsed from <code>dtd</dtd>.  The owner document of each node
+     * will be <code>doc</doc>.
+     *
+     * NekoDTD parser returns a new document node containing elements
+     * representing the dtd declarations. The plan is to get the root
+     * element and adopt it into <code>doc</code>, stipping the
+     * Document provided by NekoDTD.
+     */
+    public static XmlDtd createXmlDtd(Ruby ruby, Document doc, String dtd) {
+        Document dtdDoc = XmlDtdParser.parse(dtd);
+        Node dtdNode = dtdDoc.getDocumentElement();
+        doc.importNode(dtdNode, true); // adoptNode doesn't work here
+                                       // (all attributes are empty
+                                       // string; not sure why -Patrick)
+
+        return new XmlDtd(ruby, dtdNode);
     }
 
     @Override
