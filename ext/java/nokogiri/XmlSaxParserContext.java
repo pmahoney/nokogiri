@@ -5,6 +5,8 @@ import java.io.IOException;
 
 import nokogiri.internals.NokogiriHandler;
 import nokogiri.internals.ParserContext;
+import nokogiri.internals.XmlSaxParser;
+import org.apache.xerces.parsers.AbstractSAXParser;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.RubyIO;
@@ -27,28 +29,34 @@ import org.xml.sax.SAXException;
 import org.xml.sax.SAXNotRecognizedException;
 import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.SAXParseException;
-import org.xml.sax.XMLReader;
-import org.xml.sax.ext.DefaultHandler2;
-import org.xml.sax.helpers.XMLReaderFactory;
 
 import static org.jruby.javasupport.util.RuntimeHelpers.invoke;
 import static nokogiri.internals.NokogiriHelpers.rubyStringToString;
 
+/**
+ * Base class for the SAX parsers.
+ *
+ * @author Patrick Mahoney <pat@polycrystal.org>
+ */
 public class XmlSaxParserContext extends ParserContext {
-    private XMLReader reader;
-
     protected static final String FEATURE_NAMESPACE_PREFIXES =
         "http://xml.org/sax/features/namespace-prefixes";
 
+    protected AbstractSAXParser parser;
+
     public XmlSaxParserContext(final Ruby ruby, RubyClass rubyClass) {
         super(ruby, rubyClass);
-
         try {
-            reader = XMLReaderFactory.createXMLReader();
-            reader.setFeature(FEATURE_NAMESPACE_PREFIXES, true);
+            parser = createParser();
         } catch (SAXException se) {
             throw RaiseException.createNativeRaiseException(ruby, se);
         }
+    }
+
+    protected AbstractSAXParser createParser() throws SAXException {
+        XmlSaxParser parser = new XmlSaxParser();
+        parser.setFeature(FEATURE_NAMESPACE_PREFIXES, true);
+        return parser;
     }
 
     /**
@@ -112,43 +120,44 @@ public class XmlSaxParserContext extends ParserContext {
     }
 
     /**
-     * This is a separate method simply to HtmlSaxParserContext can
-     * override.
-     */
-    protected void do_parse() throws SAXException, IOException {
-        this.reader.parse(this.source);
-    }
-
-    /**
      * Set a property of the underlying parser.
      */
     protected void setProperty(String key, Object val)
         throws SAXNotRecognizedException, SAXNotSupportedException {
-        reader.setProperty(key, val);
+        parser.setProperty(key, val);
     }
 
     protected void setContentHandler(ContentHandler handler) {
-        reader.setContentHandler(handler);
+        parser.setContentHandler(handler);
     }
 
     protected void setErrorHandler(ErrorHandler handler) {
-        reader.setErrorHandler(handler);
+        parser.setErrorHandler(handler);
     }
-
 
     /**
      * Perform any initialization prior to parsing with the handler
      * <code>handlerRuby</code>. Convenience hook for subclasses.
      */
-    protected void initParseWith(ThreadContext context,
-                                 IRubyObject handlerRuby) {
+    protected void preParse(ThreadContext context,
+                            IRubyObject handlerRuby,
+                            NokogiriHandler handler) {
+        ((XmlSaxParser) parser).setXmlDeclHandler(handler);
+    }
+
+    protected void postParse(ThreadContext context,
+                             IRubyObject handlerRuby,
+                             NokogiriHandler handler) {
         // noop
     }
 
-    @JRubyMethod()
+    protected void do_parse() throws SAXException, IOException {
+        parser.parse(getInputSource());
+    }
+
+    @JRubyMethod
     public IRubyObject parse_with(ThreadContext context,
                                   IRubyObject handlerRuby) {
-        initParseWith(context, handlerRuby);
         Ruby ruby = context.getRuntime();
 
         if(!invoke(context, handlerRuby, "respond_to?",
@@ -157,7 +166,8 @@ public class XmlSaxParserContext extends ParserContext {
             throw ruby.newArgumentError(msg);
         }
 
-        DefaultHandler2 handler = new NokogiriHandler(ruby, handlerRuby);
+        NokogiriHandler handler = new NokogiriHandler(ruby, handlerRuby);
+        preParse(context, handlerRuby, handler);
 
         setContentHandler(handler);
         setErrorHandler(handler);
@@ -196,10 +206,37 @@ public class XmlSaxParserContext extends ParserContext {
             throw ruby.newIOErrorFromException(ioe);
         }
 
+        postParse(context, handlerRuby, handler);
+
         maybeTrimLeadingAndTrailingWhitespace(context, handlerRuby);
 
         return ruby.getNil();
     }
+
+    /**
+     * Can take a boolean assignment.
+     *
+     * @param context
+     * @param value
+     * @return
+     */
+    @JRubyMethod(name = "replace_entities=")
+    public IRubyObject set_replace_entities(ThreadContext context,
+                                            IRubyObject value) {
+        if (!value.isTrue()) {
+            throw context.getRuntime()
+                .newRuntimeError("Not replacing entities is unsupported");
+        }
+
+        return this;
+    }
+
+    @JRubyMethod(name="replace_entities")
+    public IRubyObject get_replace_entities(ThreadContext context,
+                                            IRubyObject value) {
+        return context.getRuntime().getTrue();
+    }
+
 
     /**
      * If the handler's document is a FragmentHandler, attempt to trim
@@ -259,30 +296,6 @@ public class XmlSaxParserContext extends ParserContext {
 
         String content = rubyStringToString(node.content(context));
         return content.trim().isEmpty();
-    }
-
-    /**
-     * Can take a boolean assignment.
-     *
-     * @param context
-     * @param value
-     * @return
-     */
-    @JRubyMethod(name = "replace_entities=")
-    public IRubyObject set_replace_entities(ThreadContext context,
-                                            IRubyObject value) {
-        if (!value.isTrue()) {
-            throw context.getRuntime()
-                .newRuntimeError("Not replacing entities is unsupported");
-        }
-
-        return this;
-    }
-
-    @JRubyMethod(name="replace_entities")
-    public IRubyObject get_replace_entities(ThreadContext context,
-                                            IRubyObject value) {
-        return context.getRuntime().getTrue();
     }
 
 }

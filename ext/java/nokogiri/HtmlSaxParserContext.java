@@ -4,6 +4,7 @@ import java.io.InputStream;
 import java.io.IOException;
 
 import nokogiri.internals.NokogiriHandler;
+import org.apache.xerces.parsers.AbstractSAXParser;
 import org.cyberneko.html.parsers.SAXParser;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
@@ -29,19 +30,22 @@ public class HtmlSaxParserContext extends XmlSaxParserContext {
 
     public HtmlSaxParserContext(Ruby ruby, RubyClass rubyClass) {
         super(ruby, rubyClass);
+    }
 
-        this.parser = new SAXParser();
+    @Override
+    protected AbstractSAXParser createParser() throws SAXException {
+        SAXParser parser = new SAXParser();
 
         try{
-            this.parser.setProperty(
+            parser.setProperty(
                 "http://cyberneko.org/html/properties/names/elems", "lower");
-            this.parser.setProperty(
+            parser.setProperty(
                 "http://cyberneko.org/html/properties/names/attrs", "lower");
-        } catch(Exception ex) {
-            throw ruby.newRuntimeError(
+            return parser;
+        } catch(SAXException ex) {
+            throw new SAXException(
                 "Problem while creating HTML SAX Parser: " + ex.toString());
         }
-
     }
 
     @JRubyMethod(name="memory", meta=true)
@@ -93,13 +97,9 @@ public class HtmlSaxParserContext extends XmlSaxParserContext {
     }
 
     @Override
-    protected void do_parse() throws SAXException, IOException {
-        parser.parse(source);
-    }
-
-    @Override
-    protected void initParseWith(ThreadContext context,
-                                 IRubyObject handlerRuby) {
+    protected void preParse(ThreadContext context,
+                             IRubyObject handlerRuby,
+                             NokogiriHandler handler) {
         final String path = "Nokogiri::XML::FragmentHandler";
         final String docFrag =
             "http://cyberneko.org/html/features/balance-tags/document-fragment";
@@ -113,23 +113,6 @@ public class HtmlSaxParserContext extends XmlSaxParserContext {
         } catch (Exception e) {
             // ignore
         }
-    }
-
-
-    @Override
-    protected void setProperty(String key, Object val)
-        throws SAXNotRecognizedException, SAXNotSupportedException {
-        parser.setProperty(key, val);
-    }
-
-    @Override
-    protected void setContentHandler(ContentHandler handler) {
-        parser.setContentHandler(handler);
-    }
-
-    @Override
-    protected void setErrorHandler(ErrorHandler handler) {
-        parser.setErrorHandler(handler);
     }
 
 }

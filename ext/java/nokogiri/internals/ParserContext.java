@@ -25,7 +25,7 @@ import static nokogiri.internals.NokogiriHelpers.rubyStringToString;
  *
  * @author Patrick Mahoney <pat@polycrystal.org>
  */
-public abstract class ParserContext extends RubyObject {
+public class ParserContext extends RubyObject {
     protected InputSource source = null;
 
     public ParserContext(Ruby runtime) {

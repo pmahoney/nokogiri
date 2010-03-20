@@ -1,6 +1,7 @@
 package nokogiri.internals;
 
 import nokogiri.XmlAttr;
+import nokogiri.internals.XmlDeclHandler;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
@@ -21,7 +22,8 @@ import static nokogiri.internals.NokogiriHelpers.isNamespace;
  *
  * @author sergio
  */
-public class NokogiriHandler extends DefaultHandler2 {
+public class NokogiriHandler extends DefaultHandler2
+    implements XmlDeclHandler {
 
     private static Logger LOGGER = Logger.getLogger(NokogiriHandler.class.getName());
 
@@ -42,6 +44,12 @@ public class NokogiriHandler extends DefaultHandler2 {
     @Override
     public void startDocument() throws SAXException {
         call("start_document");
+    }
+
+    public void xmlDecl(String version, String encoding, String standalone) {
+        call("xmldecl", stringOrNil(ruby, version),
+             stringOrNil(ruby, encoding),
+             stringOrNil(ruby, standalone));
     }
 
     @Override
@@ -96,8 +104,6 @@ public class NokogiriHandler extends DefaultHandler2 {
         RubyArray rubyAttr = RubyArray.newArray(ruby);
         // for namespace defining attributes
         RubyArray rubyNSAttr = RubyArray.newArray(ruby);
-        // for all attributes
-        RubyArray rubyAllAttr = RubyArray.newArray(ruby);
 
         ThreadContext context = ruby.getCurrentContext();
 
@@ -128,9 +134,6 @@ public class NokogiriHandler extends DefaultHandler2 {
                     RuntimeHelpers.invoke(context, attrClass, "new", args);
                 rubyAttr.add(attr);
             }
-
-            rubyAllAttr.add(stringOrNil(ruby, qn));
-            rubyAllAttr.add(stringOrNil(ruby, val));
         }
 
         call("start_element_namespace",
@@ -139,9 +142,6 @@ public class NokogiriHandler extends DefaultHandler2 {
              stringOrNil(ruby, getPrefix(qName)),
              stringOrNil(ruby, uri),
              rubyNSAttr);
-
-        // SAX v1 interface?  FIXME: when to call this?
-        //call("start_element", ruby.newString(qName), rubyAllAttr);
     }
 
     @Override
@@ -201,6 +201,13 @@ public class NokogiriHandler extends DefaultHandler2 {
         RuntimeHelpers.invoke(context, document(context), methodName, arg1, arg2);
     }
 
+    private void call(String methodName, IRubyObject arg1, IRubyObject arg2,
+                      IRubyObject arg3) {
+        ThreadContext context = ruby.getCurrentContext();
+        RuntimeHelpers.invoke(context, document(context), methodName,
+                              arg1, arg2, arg3);
+    }
+
     private void call(String methodName,
                       IRubyObject arg0,
                       IRubyObject arg1,
@@ -218,7 +225,7 @@ public class NokogiriHandler extends DefaultHandler2 {
     }
 
     private IRubyObject document(ThreadContext context){
-		return RuntimeHelpers.invoke(context, this.object, "document");
+        return RuntimeHelpers.invoke(context, this.object, "document");
     }
 
 }
