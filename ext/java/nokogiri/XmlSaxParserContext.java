@@ -39,6 +39,8 @@ import static nokogiri.internals.NokogiriHelpers.rubyStringToString;
  * @author Patrick Mahoney <pat@polycrystal.org>
  */
 public class XmlSaxParserContext extends ParserContext {
+    protected static final String FEATURE_NAMESPACES =
+        "http://xml.org/sax/features/namespaces";
     protected static final String FEATURE_NAMESPACE_PREFIXES =
         "http://xml.org/sax/features/namespace-prefixes";
 
