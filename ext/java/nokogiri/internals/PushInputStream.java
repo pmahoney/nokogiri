@@ -2,6 +2,7 @@ package nokogiri.internals;
 
 import java.io.InputStream;
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import java.lang.Math;
 import java.lang.Thread;
 import java.util.ArrayList;
@@ -50,7 +51,7 @@ public class PushInputStream extends InputStream {
 
     protected synchronized void ensureOpen() throws IOException {
         if (!isOpen) {
-            throw new IOException("stream is closed");
+            throw new ClosedChannelException();
         }
     }
 
@@ -58,6 +59,8 @@ public class PushInputStream extends InputStream {
      * Write data that can be read from the stream.
      */
     public synchronized void write(byte[] b) {
+        if (buffer == null) System.out.println("BUFFER IS NULL");
+        if (b == null) System.out.println("BYTE ARRAY IS NILL");
         buffer.put(b);
         notifyAll();            // notify readers waiting
     }
@@ -67,7 +70,8 @@ public class PushInputStream extends InputStream {
      * (waits until the thread reading from this stream is blocked in
      * a read()).
      */
-    public synchronized void writeAndWaitForRead(byte[] b) {
+    public synchronized void writeAndWaitForRead(byte[] b) throws IOException {
+        ensureOpen();
         write(b);
         for (;;) {
             try {
@@ -94,12 +98,13 @@ public class PushInputStream extends InputStream {
         return buffer.size() - pos;
     }
 
+    int nClose = 0;
     /**
      * @see InputStream.close()
      */
     @Override
     public synchronized void close() throws IOException {
-        ensureOpen();
+        if (!isOpen) return;
         isOpen = false;
         buffer = null;
         notifyAll();

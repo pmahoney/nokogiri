@@ -2,6 +2,7 @@ package nokogiri;
 
 import java.io.InputStream;
 import java.io.IOException;
+import java.nio.channels.ClosedChannelException;
 import java.lang.InterruptedException;
 import java.lang.Runnable;
 import java.lang.Thread;
@@ -21,6 +22,7 @@ import org.xml.sax.InputSource;
 import static org.jruby.javasupport.util.RuntimeHelpers.invoke;
 
 public class XmlSaxPushParser extends RubyObject {
+    IRubyObject options;
     PushInputStream stream;
     Thread reader;
 
@@ -32,6 +34,9 @@ public class XmlSaxPushParser extends RubyObject {
     public IRubyObject initialize_native(final ThreadContext context,
                                          IRubyObject _saxParser,
                                          IRubyObject fileName) {
+        options = invoke(context, context.getRuntime()
+                         .getClassFromPath("Nokogiri::XML::ParseOptions"),
+                         "new");
         stream = new PushInputStream();
 
         Runner runner = new Runner(context, this, stream);
@@ -42,12 +47,30 @@ public class XmlSaxPushParser extends RubyObject {
         return this;
     }
 
+    @JRubyMethod(name="options")
+    public IRubyObject getOptions(ThreadContext context) {
+        return invoke(context, options, "options");
+    }
+
+    @JRubyMethod(name="options=")
+    public IRubyObject setOptions(ThreadContext context, IRubyObject val) {
+        invoke(context, options, "options=", val);
+        return getOptions(context);
+    }
+
     @JRubyMethod
     public IRubyObject native_write(ThreadContext context, IRubyObject chunk,
                                     IRubyObject isLast) {
-
         byte[] data = chunk.toString().getBytes();
-        stream.writeAndWaitForRead(data);
+
+        try {
+            stream.writeAndWaitForRead(data);
+        } catch (ClosedChannelException e) {
+            // ignore
+        } catch (IOException e) {
+            throw context.getRuntime().newRuntimeError(e.toString());
+        }
+
         if (isLast.isTrue()) {
             try {
                 stream.close();
