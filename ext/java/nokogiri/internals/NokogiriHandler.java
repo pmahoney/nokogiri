@@ -136,6 +136,8 @@ public class NokogiriHandler extends DefaultHandler2
             }
         }
 
+        if (localName == null || localName.equals(""))
+            localName = getLocalPart(qName);
         call("start_element_namespace",
              stringOrNil(ruby, localName),
              rubyAttr,
