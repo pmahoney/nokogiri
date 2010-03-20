@@ -231,9 +231,9 @@ public class XmlDocument extends XmlNode {
                 ctx.append("\"");
             }
 
-            ctx.append(" standalone=\"");
-            ctx.append(getDocument().getXmlStandalone() ? "yes" : "no");
-            ctx.append("\"?>\n");
+            //ctx.append(" standalone=\"");
+            //ctx.append(getDocument().getXmlStandalone() ? "yes" : "no");
+            ctx.append("?>\n");
         }
 
         IRubyObject maybeRoot = root(context);
