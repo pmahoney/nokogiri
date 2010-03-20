@@ -148,7 +148,10 @@ public class NokogiriHandler extends DefaultHandler2
 
     @Override
     public void endElement(String uri, String localName, String qName) throws SAXException {
-        call("end_element", ruby.newString(qName));
+        call("end_element_namespace",
+             stringOrNil(ruby, localName),
+             stringOrNil(ruby, getPrefix(qName)),
+             stringOrNil(ruby, uri));
     }
 
     @Override
