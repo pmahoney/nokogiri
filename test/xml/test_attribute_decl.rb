@@ -64,7 +64,11 @@ module Nokogiri
       end
 
       def test_attribute_type
-        assert_equal 1, @attr_decl.attribute_type
+        if Nokogiri.uses_libxml?
+          assert_equal 1, @attr_decl.attribute_type
+        else
+          assert 'CDATA', @attr_decl.attribute_type
+        end
       end
 
       def test_default
