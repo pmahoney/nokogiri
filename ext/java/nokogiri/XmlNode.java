@@ -268,10 +268,7 @@ public class XmlNode extends RubyObject {
 
     /**
      * Return an array of XmlNamespace nodes based on the attributes
-     * of this node.  Do not include default,
-     * e.g. <code>xmlns="http://example.com"</code>, but only include
-     * prefix definitions,
-     * e.g. <code>xmlns:prefix="http://example.com/"</code>.
+     * of this node.
      */
     protected RubyArray getNsDefinitions(Ruby ruby) {
         if (this.namespace_definitions == null) {
@@ -284,7 +281,7 @@ public class XmlNode extends RubyObject {
 
             for(int i = 0; i < nodes.getLength(); i++) {
                 Node n = nodes.item(i);
-                if(isNonDefaultNamespace(n)) {
+                if(isNamespace(n)) {
                     arr.append(XmlNamespace.fromNode(ruby, n));
                 }
             }

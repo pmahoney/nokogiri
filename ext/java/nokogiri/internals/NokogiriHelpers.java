@@ -304,7 +304,8 @@ public class NokogiriHelpers {
     }
 
     protected static boolean fullNamesMatch(Node a, Node b) {
-        return getFullName(a).equals(getFullName(b));
+        return a.getNodeName().equals(b.getNodeName());
+        //return getFullName(a).equals(getFullName(b));
     }
 
     protected static String getFullName(Node n) {

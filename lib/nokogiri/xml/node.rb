@@ -139,7 +139,6 @@ module Nokogiri
         sets = paths.map { |path|
           ctx = XPathContext.new(self)
           ctx.register_namespaces(ns)
-          path = path.gsub(/\/xmlns:/,'/:') unless Nokogiri.uses_libxml?
           set = ctx.evaluate(path, handler).node_set
           set.document = document
           document.decorate(set)
