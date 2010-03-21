@@ -10,7 +10,7 @@ module Nokogiri
       end
 
       def test_system_id
-        assert_equal 'staff.dtd', @dtd.system_id
+        assert_equal 'test/files/staff.dtd', @dtd.system_id
       end
 
       def test_external_id
