@@ -16,6 +16,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import static nokogiri.internals.NokogiriHelpers.stringOrNil;
+import static org.jruby.javasupport.util.RuntimeHelpers.invoke;
 
 public class XmlDtd extends XmlNode {
     /**
@@ -35,6 +36,13 @@ public class XmlDtd extends XmlNode {
     /** cache of name => XmlElementDecl */
     protected RubyHash elements = null;
 
+    /** cache of name => XmlEntityDecl */
+    protected RubyHash entities = null;
+
+    /** cache of name => Nokogiri::XML::Notation */
+    protected RubyHash notations = null;
+    protected RubyClass notationClass;
+
     public static RubyClass getClass(Ruby ruby) {
         return (RubyClass)ruby.getClassFromPath("Nokogiri::XML::DTD");
     }
@@ -51,6 +59,8 @@ public class XmlDtd extends XmlNode {
                   DocumentType node, Node dtdNode) {
         super(ruby, rubyClass, node);
         this.dtdNode = dtdNode;
+        notationClass = (RubyClass)
+            ruby.getClassFromPath("Nokogiri::XML::Notation");
     }
 
     /**
@@ -97,12 +107,16 @@ public class XmlDtd extends XmlNode {
 
     @JRubyMethod
     public IRubyObject entities(ThreadContext context) {
-        throw context.getRuntime().newNotImplementedError("not implemented");
+        if (entities == null) extractDecls(context);
+
+        return entities;
     }
 
     @JRubyMethod
     public IRubyObject notations(ThreadContext context) {
-        throw context.getRuntime().newNotImplementedError("not implemented");
+        if (notations == null) extractDecls(context);
+
+        return notations;
     }
 
     /**
@@ -164,7 +178,12 @@ public class XmlDtd extends XmlNode {
     }
 
     public static boolean isEntityDecl(Node node) {
-        return nameEquals(node, DTDConfiguration.E_INTERNAL_ENTITY_DECL);
+        return (nameEquals(node, DTDConfiguration.E_INTERNAL_ENTITY_DECL) ||
+                nameEquals(node, DTDConfiguration.E_UNPARSED_ENTITY_DECL));
+    }
+
+    public static boolean isNotationDecl(Node node) {
+        return nameEquals(node, DTDConfiguration.E_NOTATION_DECL);
     }
 
     /**
@@ -178,6 +197,8 @@ public class XmlDtd extends XmlNode {
         allDecls = RubyArray.newArray(runtime);
         attributes = RubyHash.newHash(runtime);
         elements = RubyHash.newHash(runtime);
+        entities = RubyHash.newHash(runtime);
+        notations = RubyHash.newHash(runtime);
 
         // recursively extract decls
         if (dtdNode == null) return; // leave all the decl hash's empty
@@ -222,7 +243,19 @@ public class XmlDtd extends XmlNode {
                 elements.op_aset(context, decl.element_name(context), decl);
                 allDecls.append(decl);
             } else if (isEntityDecl(child)) {
-                IRubyObject decl = XmlEntityDecl.create(context, child);
+                XmlEntityDecl decl = (XmlEntityDecl)
+                    XmlEntityDecl.create(context, child);
+                entities.op_aset(context, decl.node_name(context), decl);
+                allDecls.append(decl);
+            } else if (isNotationDecl(child)) {
+                XmlNode tmp = (XmlNode)
+                    XmlNode.constructNode(context.getRuntime(), child);
+                IRubyObject decl = invoke(context, notationClass, "new",
+                                          tmp.getAttribute(context, "name"),
+                                          tmp.getAttribute(context, "pubid"),
+                                          tmp.getAttribute(context, "sysid"));
+                notations.op_aset(context,
+                                  tmp.getAttribute(context, "name"), decl);
                 allDecls.append(decl);
             }
 

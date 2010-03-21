@@ -41,14 +41,20 @@ public class XmlEntityDecl extends XmlNode {
         return self;
     }
 
-    protected IRubyObject getAttribute(ThreadContext context, String key) {
-        String val;
-        val = ((Element)node).getAttribute(key);
-        if (val == null) {
-            return context.getRuntime().getNil();
-        }
+    /**
+     * Returns the local part of the element name.
+     */
+    @Override
+    @JRubyMethod
+    public IRubyObject node_name(ThreadContext context) {
+        return getAttribute(context, "name");
+    }
 
-        return context.getRuntime().newString(val);
+    @Override
+    @JRubyMethod(name = "node_name=")
+    public IRubyObject node_name_set(ThreadContext context, IRubyObject name) {
+        throw context.getRuntime()
+            .newRuntimeError("cannot change name of DTD decl");
     }
 
     @JRubyMethod
