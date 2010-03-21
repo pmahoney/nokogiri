@@ -29,6 +29,7 @@ import org.jruby.runtime.builtin.IRubyObject;
 import org.jruby.util.ByteList;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
+import org.w3c.dom.DocumentType;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
@@ -211,7 +212,7 @@ public class XmlNode extends RubyObject {
             case Node.DOCUMENT_NODE:
                 return new XmlDocument(ruby, (Document) node);
             case Node.DOCUMENT_TYPE_NODE:
-                return new XmlDtd(ruby, (RubyClass)ruby.getClassFromPath("Nokogiri::XML::DTD"), node);
+                return XmlDtd.newFromInternalSubset(ruby, (DocumentType) node);
             default:
                 return new XmlNode(ruby, (RubyClass)ruby.getClassFromPath("Nokogiri::XML::Node"), node);
         }

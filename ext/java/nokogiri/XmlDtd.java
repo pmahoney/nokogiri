@@ -11,10 +11,17 @@ import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.w3c.dom.Document;
+import org.w3c.dom.DocumentType;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 public class XmlDtd extends XmlNode {
+    /**
+     * The as-parsed by NekoDTD and worked over by
+     * newFromInternalSubset() node containnit DTD decls.
+     */
+    protected Node dtdNode;
+
     protected RubyArray allDecls = null;
 
     /** cache of children, Nokogiri::XML::NodeSet */
@@ -34,32 +41,41 @@ public class XmlDtd extends XmlNode {
         super(ruby, rubyClass);
     }
 
-    public XmlDtd(Ruby ruby, Node node) {
-        this(ruby, getClass(ruby), node);
+    public XmlDtd(Ruby ruby, DocumentType node, Node dtdNode) {
+        this(ruby, getClass(ruby), node, dtdNode);
     }
 
-    public XmlDtd(Ruby ruby, RubyClass rubyClass, Node node) {
+    public XmlDtd(Ruby ruby, RubyClass rubyClass,
+                  DocumentType node, Node dtdNode) {
         super(ruby, rubyClass, node);
+        this.dtdNode = dtdNode;
     }
 
     /**
      * Create an unparented element that contains DTD declarations
-     * parsed from <code>dtd</dtd>.  The owner document of each node
-     * will be <code>doc</doc>.
+     * parsed from the internal subset of <code>doctype</dtd>.  The
+     * owner document of each node will be the owner of
+     * <code>doctype</doc>.
      *
      * NekoDTD parser returns a new document node containing elements
      * representing the dtd declarations. The plan is to get the root
-     * element and adopt it into <code>doc</code>, stipping the
+     * element and adopt it into the correct document, stipping the
      * Document provided by NekoDTD.
      */
-    public static XmlDtd createXmlDtd(Ruby ruby, Document doc, String dtd) {
+    public static XmlDtd newFromInternalSubset(Ruby ruby, DocumentType node) {
+        Document doc = node.getOwnerDocument();
+        String dtd = node.getInternalSubset();
+        if (dtd == null) {
+            return new XmlDtd(ruby, node, null);
+        }
+
         Document dtdDoc = XmlDtdParser.parse(dtd);
         Node dtdNode = dtdDoc.getDocumentElement();
         doc.importNode(dtdNode, true); // adoptNode doesn't work here
                                        // (all attributes are empty
                                        // string; not sure why -Patrick)
 
-        return new XmlDtd(ruby, dtdNode);
+        return new XmlDtd(ruby, node, dtdNode);
     }
 
     @Override
@@ -100,6 +116,35 @@ public class XmlDtd extends XmlNode {
         return children;
     }
 
+    /**
+     * Returns the name of the dtd.
+     */
+    @Override
+    @JRubyMethod
+    public IRubyObject node_name(ThreadContext context) {
+        DocumentType dt = (DocumentType) getNode();
+        return context.getRuntime().newString(dt.getName());
+    }
+
+    @Override
+    @JRubyMethod(name = "node_name=")
+    public IRubyObject node_name_set(ThreadContext context, IRubyObject name) {
+        throw context.getRuntime()
+            .newRuntimeError("cannot change name of DTD");
+    }
+
+    @JRubyMethod
+    public IRubyObject system_id(ThreadContext context) {
+        DocumentType dt = (DocumentType) getNode();
+        return context.getRuntime().newString(dt.getSystemId());
+    }
+
+    @JRubyMethod
+    public IRubyObject public_id(ThreadContext context) {
+        DocumentType dt = (DocumentType) getNode();
+        return context.getRuntime().newString(dt.getPublicId());
+    }
+
     protected static boolean nameEquals(Node node, QName name) {
         return name.localpart.equals(node.getNodeName());
     }
@@ -129,7 +174,8 @@ public class XmlDtd extends XmlNode {
         elements = RubyHash.newHash(runtime);
 
         // recursively extract decls
-        extractDecls(context, getNode());
+        if (dtdNode == null) return; // leave all the decl hash's empty
+        extractDecls(context, dtdNode);
 
         // convert allDecls to a NodeSet
         children =

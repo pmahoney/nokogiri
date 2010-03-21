@@ -194,13 +194,8 @@ public class XmlDocument extends XmlNode {
         if (getDocument().getDoctype() == null)
             return context.getRuntime().getNil();
 
-        /* At this point, we have an unparsed DTD, so parse it and
-         * save it back */
-        String internalDTD =
-            getDocument().getDoctype().getInternalSubset();
-        dtd = XmlDtd.createXmlDtd(context.getRuntime(),
-                                  (Document) node,
-                                  internalDTD);
+        dtd = XmlDtd.newFromInternalSubset(context.getRuntime(),
+                                           getDocument().getDoctype());
         node.setUserData(DTD_INTERNAL_SUBSET, dtd, null);
 
         return dtd;
