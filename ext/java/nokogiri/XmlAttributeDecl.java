@@ -49,6 +49,14 @@ public class XmlAttributeDecl extends XmlNode {
         return context.getRuntime().newString(((Element)node).getAttribute(key));
     }
 
+    public IRubyObject element_name(ThreadContext context) {
+        return getAttribute(context, "ename");
+    }
+
+    public IRubyObject attribute_name(ThreadContext context) {
+        return getAttribute(context, "aname");
+    }
+
     @JRubyMethod
     public IRubyObject attribute_type(ThreadContext context) {
         return getAttribute(context, "atype");
