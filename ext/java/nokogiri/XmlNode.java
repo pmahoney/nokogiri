@@ -425,7 +425,7 @@ public class XmlNode extends RubyObject {
             } else if(str.equals("#text")) {
                 str = "text";
             } else {
-                str = NokogiriHelpers.getLocalName(str);
+                str = NokogiriHelpers.getLocalPart(str);
             }
 
             if (str == null) str = "";

@@ -17,6 +17,8 @@ import org.xml.sax.ext.DefaultHandler2;
 import java.util.logging.Logger;
 
 import static nokogiri.internals.NokogiriHelpers.isNamespace;
+import static nokogiri.internals.NokogiriHelpers.getPrefix;
+import static nokogiri.internals.NokogiriHelpers.getLocalPart;
 
 /**
  *
@@ -55,30 +57,6 @@ public class NokogiriHandler extends DefaultHandler2
     @Override
     public void endDocument() throws SAXException {
         call("end_document");
-    }
-
-    /**
-     * Return the prefix of a qualified name like "prefix:local".
-     * Returns null if there is no prefix.
-     */
-    public static String getPrefix(String qName) {
-        int pos = qName.indexOf(':');
-        if (pos > 0)
-            return qName.substring(0, pos);
-        else
-            return null;
-    }
-
-    /**
-     * Return the local part of a qualified name like "prefix:local".
-     * Returns <code>qName</code> if there is no prefix.
-     */
-    public static String getLocalPart(String qName) {
-        int pos = qName.indexOf(':');
-        if (pos > 0)
-            return qName.substring(pos + 1, qName.length());
-        else
-            return qName;
     }
 
     public static IRubyObject stringOrNil(Ruby ruby, String s) {

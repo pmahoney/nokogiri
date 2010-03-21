@@ -39,17 +39,32 @@ public class NokogiriHelpers {
         return xmlNode;
     }
 
-    public static String getLocalName(String name) {
-        int index = name.indexOf(':');
-        if(index == -1) {
-            return name;
-        } else {
-            return name.substring(index+1);
-        }
+    /**
+     * Return the prefix of a qualified name like "prefix:local".
+     * Returns null if there is no prefix.
+     */
+    public static String getPrefix(String qName) {
+        int pos = qName.indexOf(':');
+        if (pos > 0)
+            return qName.substring(0, pos);
+        else
+            return null;
+    }
+
+    /**
+     * Return the local part of a qualified name like "prefix:local".
+     * Returns <code>qName</code> if there is no prefix.
+     */
+    public static String getLocalPart(String qName) {
+        int pos = qName.indexOf(':');
+        if (pos > 0)
+            return qName.substring(pos + 1);
+        else
+            return qName;
     }
 
     public static String getLocalNameForNamespace(String name) {
-        String localName = getLocalName(name);
+        String localName = getLocalPart(name);
         return ("xmlns".equals(localName)) ? null : localName;
     }
 
@@ -346,7 +361,7 @@ public class NokogiriHelpers {
         } else if(name.equals("#text")) {
             return "text";
         } else {
-            name = getLocalName(name);
+            name = getLocalPart(name);
             return (name == null) ? "" : name;
         }
     }
