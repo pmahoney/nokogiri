@@ -608,8 +608,10 @@ public class XmlNode extends RubyObject {
     public IRubyObject content(ThreadContext context) {
         if(this.content == null) {
             String textContent = this.node.getTextContent();
-            if (textContent == null) textContent = "";
-            this.content = context.getRuntime().newString(textContent);
+            if (textContent == null)
+                content = context.getRuntime().getNil();
+            else
+                content = context.getRuntime().newString(textContent);
         }
 
         return this.content;
