@@ -364,9 +364,17 @@ public class XmlNode extends RubyObject {
      * declarations like XmlElementDecl.
      */
     protected IRubyObject getAttribute(ThreadContext context, String key) {
-        if (!(node instanceof Element)) return context.getRuntime().getNil();
+        String value = getAttribute(key);
+        if (value == null)
+            return context.getRuntime().getNil();
+        else
+            return context.getRuntime().newString(value);
+    }
 
-        return context.getRuntime().newString(((Element)node).getAttribute(key));
+    protected String getAttribute(String key) {
+        if (!(node instanceof Element)) return null;
+
+        return ((Element)node).getAttribute(key);
     }
 
 

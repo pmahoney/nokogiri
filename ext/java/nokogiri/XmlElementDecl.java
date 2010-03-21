@@ -11,6 +11,9 @@ import org.jruby.runtime.builtin.IRubyObject;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
+import static nokogiri.internals.NokogiriHelpers.getPrefix;
+import static nokogiri.internals.NokogiriHelpers.getLocalPart;
+
 /**
  * DTD element declaration.
  *
@@ -49,10 +52,23 @@ public class XmlElementDecl extends XmlNode {
         return getAttribute(context, "ename");
     }
 
+    @JRubyMethod
+    public IRubyObject prefix(ThreadContext context) {
+        String enamePrefix = getPrefix(getAttribute("ename"));
+        if (enamePrefix == null)
+            return context.getRuntime().getNil();
+        else
+            return context.getRuntime().newString(enamePrefix);
+    }
+
+    /**
+     * Returns the local part of the element name.
+     */
     @Override
     @JRubyMethod
     public IRubyObject node_name(ThreadContext context) {
-        return element_name(context);
+        String ename = getLocalPart(getAttribute("ename"));
+        return context.getRuntime().newString(ename);
     }
 
     @Override
