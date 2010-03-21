@@ -39,6 +39,13 @@ public class NokogiriHelpers {
         return xmlNode;
     }
 
+    public static IRubyObject stringOrNil(Ruby ruby, String s) {
+        if (s == null)
+            return ruby.getNil();
+
+        return ruby.newString(s);
+    }
+
     /**
      * Return the prefix of a qualified name like "prefix:local".
      * Returns null if there is no prefix.

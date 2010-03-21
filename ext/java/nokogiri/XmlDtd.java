@@ -15,6 +15,8 @@ import org.w3c.dom.DocumentType;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import static nokogiri.internals.NokogiriHelpers.stringOrNil;
+
 public class XmlDtd extends XmlNode {
     /**
      * The as-parsed by NekoDTD and worked over by
@@ -133,6 +135,10 @@ public class XmlDtd extends XmlNode {
             .newRuntimeError("cannot change name of DTD");
     }
 
+    /**
+     * Return the basename of the system id.  E.g. for system id of
+     * "files/staff.xml", return "staff.xml".
+     */
     @JRubyMethod
     public IRubyObject system_id(ThreadContext context) {
         DocumentType dt = (DocumentType) getNode();
@@ -140,9 +146,9 @@ public class XmlDtd extends XmlNode {
     }
 
     @JRubyMethod
-    public IRubyObject public_id(ThreadContext context) {
+    public IRubyObject external_id(ThreadContext context) {
         DocumentType dt = (DocumentType) getNode();
-        return context.getRuntime().newString(dt.getPublicId());
+        return stringOrNil(context.getRuntime(), dt.getPublicId());
     }
 
     protected static boolean nameEquals(Node node, QName name) {

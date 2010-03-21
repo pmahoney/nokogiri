@@ -19,6 +19,7 @@ import java.util.logging.Logger;
 import static nokogiri.internals.NokogiriHelpers.isNamespace;
 import static nokogiri.internals.NokogiriHelpers.getPrefix;
 import static nokogiri.internals.NokogiriHelpers.getLocalPart;
+import static nokogiri.internals.NokogiriHelpers.stringOrNil;
 
 /**
  *
@@ -57,13 +58,6 @@ public class NokogiriHandler extends DefaultHandler2
     @Override
     public void endDocument() throws SAXException {
         call("end_document");
-    }
-
-    public static IRubyObject stringOrNil(Ruby ruby, String s) {
-        if (s == null)
-            return ruby.getNil();
-
-        return ruby.newString(s);
     }
 
     /*
