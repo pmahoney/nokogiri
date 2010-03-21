@@ -53,11 +53,11 @@ module Nokogiri
       end
 
       def test_element_type
-        assert_equal 1, @elements.first.element_type
+        assert_equal 1, @elements.first.element_type if Nokogiri.uses_libxml?
       end
 
       def test_type
-        assert_equal 15, @elements.first.type
+        assert_equal 15, @elements.first.type if Nokogiri.uses_libxml?
       end
 
       def test_class
