@@ -45,8 +45,17 @@ public class XmlAttributeDecl extends XmlNode {
         return self;
     }
 
-    protected IRubyObject getAttribute(ThreadContext context, String key) {
-        return context.getRuntime().newString(((Element)node).getAttribute(key));
+    @Override
+    @JRubyMethod
+    public IRubyObject node_name(ThreadContext context) {
+        return attribute_name(context);
+    }
+
+    @Override
+    @JRubyMethod(name = "node_name=")
+    public IRubyObject node_name_set(ThreadContext context, IRubyObject name) {
+        throw context.getRuntime()
+            .newRuntimeError("cannot change name of DTD decl");
     }
 
     public IRubyObject element_name(ThreadContext context) {
@@ -87,4 +96,5 @@ public class XmlAttributeDecl extends XmlNode {
 
         return enumVals;
     }
+
 }

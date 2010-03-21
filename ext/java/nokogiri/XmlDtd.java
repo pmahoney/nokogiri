@@ -23,6 +23,9 @@ public class XmlDtd extends XmlNode {
     /** cache of name => XmlAttributeDecl */
     protected RubyHash attributes = null;
 
+    /** cache of name => XmlElementDecl */
+    protected RubyHash elements = null;
+
     public static RubyClass getClass(Ruby ruby) {
         return (RubyClass)ruby.getClassFromPath("Nokogiri::XML::DTD");
     }
@@ -69,7 +72,9 @@ public class XmlDtd extends XmlNode {
 
     @JRubyMethod
     public IRubyObject elements(ThreadContext context) {
-        throw context.getRuntime().newNotImplementedError("not implemented");
+        if (elements == null) extractDecls(context);
+
+        return elements;
     }
 
     @JRubyMethod
@@ -121,6 +126,7 @@ public class XmlDtd extends XmlNode {
         // initialize data structures
         allDecls = RubyArray.newArray(runtime);
         attributes = RubyHash.newHash(runtime);
+        elements = RubyHash.newHash(runtime);
 
         // recursively extract decls
         extractDecls(context, getNode());
@@ -142,7 +148,9 @@ public class XmlDtd extends XmlNode {
                 attributes.op_aset(context, decl.attribute_name(context), decl);
                 allDecls.append(decl);
             } else if (isElementDecl(child)) {
-                IRubyObject decl = XmlElementDecl.create(context, child);
+                XmlElementDecl decl = (XmlElementDecl)
+                    XmlElementDecl.create(context, child);
+                elements.op_aset(context, decl.element_name(context), decl);
                 allDecls.append(decl);
             } else if (isEntityDecl(child)) {
                 IRubyObject decl = XmlEntityDecl.create(context, child);

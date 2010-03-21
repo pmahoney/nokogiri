@@ -354,6 +354,22 @@ public class XmlNode extends RubyObject {
         }
     }
 
+    /**
+     * Return the string value of the attribute <code>key</code> or
+     * nil.
+     *
+     * Only applies where the underlying Node is an Element node, but
+     * implemented here in XmlNode because not all nodes with
+     * underlying Element nodes subclass XmlElement, such as the DTD
+     * declarations like XmlElementDecl.
+     */
+    protected IRubyObject getAttribute(ThreadContext context, String key) {
+        if (!(node instanceof Element)) return context.getRuntime().getNil();
+
+        return context.getRuntime().newString(((Element)node).getAttribute(key));
+    }
+
+
     public void post_add_child(ThreadContext context, XmlNode current, XmlNode child) {
     }
 
