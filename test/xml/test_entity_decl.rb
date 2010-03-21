@@ -41,7 +41,7 @@ module Nokogiri
       end
 
       def test_type
-        assert_equal 17, @entities.first.type
+        assert_equal 17, @entities.first.type if Nokogiri.uses_libxml?
       end
 
       def test_class

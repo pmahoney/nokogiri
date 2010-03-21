@@ -61,4 +61,20 @@ public class XmlEntityDecl extends XmlNode {
     public IRubyObject content(ThreadContext context) {
         return getAttribute(context, "value");
     }
+
+    // TODO: what is content vs. original_content?
+    @JRubyMethod
+    public IRubyObject original_content(ThreadContext context) {
+        return getAttribute(context, "value");
+    }
+
+    @JRubyMethod
+    public IRubyObject system_id(ThreadContext context) {
+        return getAttribute(context, "sysid");
+    }
+
+    @JRubyMethod
+    public IRubyObject external_id(ThreadContext context) {
+        return getAttribute(context, "pubid");
+    }
 }
