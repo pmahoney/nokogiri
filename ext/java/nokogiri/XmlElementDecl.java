@@ -17,6 +17,7 @@ import org.w3c.dom.Node;
  * @author Patrick Mahoney <pat@polycrystal.org>
  */
 public class XmlElementDecl extends XmlNode {
+    RubyArray attrDecls;
 
     public static RubyClass getRubyClass(Ruby ruby) {
         return (RubyClass)ruby.getClassFromPath("Nokogiri::XML::ElementDecl");
@@ -33,6 +34,7 @@ public class XmlElementDecl extends XmlNode {
      */
     public XmlElementDecl(Ruby ruby, RubyClass klass, Node elemDeclNode) {
         super(ruby, klass, elemDeclNode);
+        attrDecls = RubyArray.newArray(ruby);
     }
 
     public static IRubyObject create(ThreadContext context, Node elemDeclNode) {
@@ -58,6 +60,23 @@ public class XmlElementDecl extends XmlNode {
     public IRubyObject node_name_set(ThreadContext context, IRubyObject name) {
         throw context.getRuntime()
             .newRuntimeError("cannot change name of DTD decl");
+    }
+
+    @Override
+    @JRubyMethod
+    public IRubyObject attribute_nodes(ThreadContext context) {
+        return attrDecls;
+    }
+
+    @Override
+    @JRubyMethod
+    public IRubyObject attribute(ThreadContext context, IRubyObject name) {
+        throw context.getRuntime()
+            .newRuntimeError("attribute by name not implemented");
+    }
+
+    public void appendAttrDecl(XmlAttributeDecl decl) {
+        attrDecls.append(decl);
     }
 
 //     @JRubyMethod

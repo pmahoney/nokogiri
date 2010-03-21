@@ -137,6 +137,23 @@ public class XmlDtd extends XmlNode {
                            (RubyClass)
                            runtime.getClassFromPath("Nokogiri::XML::NodeSet"),
                            allDecls);
+
+        // add attribute decls as attributes to the matching element decl
+        RubyArray keys = attributes.keys();
+        for (int i = 0; i < keys.getLength(); ++i) {
+            IRubyObject akey = keys.entry(i);
+            IRubyObject val;
+
+            val = attributes.op_aref(context, akey);
+            if (val.isNil()) continue;
+            XmlAttributeDecl attrDecl = (XmlAttributeDecl) val;
+            IRubyObject ekey = attrDecl.element_name(context);
+            val = elements.op_aref(context, ekey);
+            if (val.isNil()) continue;
+            XmlElementDecl elemDecl = (XmlElementDecl) val;
+
+            elemDecl.appendAttrDecl(attrDecl);
+        }
     }
 
     protected void extractDecls(ThreadContext context, Node node) {
