@@ -314,6 +314,9 @@ module Nokogiri
           node = @doc.create_element(method.to_s.sub(/[_!]$/, '')) { |n|
             # Set up the namespace
             if @ns
+              if @ns.document == nil
+                p "ns w/nil doc: #{@ns.inspect}"
+              end
               n.namespace = @ns
               @ns = nil
             end

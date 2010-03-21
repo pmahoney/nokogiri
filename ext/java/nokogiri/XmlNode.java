@@ -266,32 +266,6 @@ public class XmlNode extends RubyObject {
         node.normalize();
     }
 
-    /**
-     * Return an array of XmlNamespace nodes based on the attributes
-     * of this node.
-     */
-    protected RubyArray getNsDefinitions(Ruby ruby) {
-        if (this.namespace_definitions == null) {
-            RubyArray arr = ruby.newArray();
-            NamedNodeMap nodes = this.node.getAttributes();
-
-            if(nodes == null) {
-                return ruby.newEmptyArray();
-            }
-
-            for(int i = 0; i < nodes.getLength(); i++) {
-                Node n = nodes.item(i);
-                if(isNamespace(n)) {
-                    arr.append(XmlNamespace.fromNode(ruby, n));
-                }
-            }
-
-            this.namespace_definitions = arr;
-        }
-
-        return (RubyArray) this.namespace_definitions;
-    }
-
     public Node getNode() {
         return node;
     }
@@ -763,9 +737,35 @@ public class XmlNode extends RubyObject {
         return namespace;
     }
 
+    /**
+     * Return an array of XmlNamespace nodes based on the attributes
+     * of this node.
+     */
     @JRubyMethod
     public IRubyObject namespace_definitions(ThreadContext context) {
-        return this.getNsDefinitions(context.getRuntime());
+        if (this.namespace_definitions == null) {
+            Ruby ruby = context.getRuntime();
+            RubyArray arr = ruby.newArray();
+            NamedNodeMap nodes = node.getAttributes();
+
+            if(nodes == null) {
+                return ruby.newEmptyArray();
+            }
+
+            IRubyObject document = document(context);
+            for(int i = 0; i < nodes.getLength(); i++) {
+                Node n = nodes.item(i);
+                if(isNamespace(n)) {
+                    XmlNamespace ns = XmlNamespace.fromNode(ruby, n);
+                    ns.setDocument(document);
+                    arr.append(ns);
+                }
+            }
+
+            this.namespace_definitions = arr;
+        }
+
+        return (RubyArray) this.namespace_definitions;
     }
 
     @JRubyMethod(name="namespaced_key?")
