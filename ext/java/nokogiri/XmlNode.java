@@ -292,10 +292,6 @@ public class XmlNode extends RubyObject {
         return (RubyArray) this.namespace_definitions;
     }
 
-    public void add_namespace_definitions(ThreadContext context,
-                                          XmlNamespace ns,
-                                          String prefix, String href) {}
-
     public Node getNode() {
         return node;
     }
@@ -513,17 +509,23 @@ public class XmlNode extends RubyObject {
         return child;
     }
 
+    /**
+     * Add a namespace definition to this node.  To the underlying
+     * node, add an attribute of the form
+     * <code>xmlns:prefix="uri"</code>.
+     */
     @JRubyMethod
-    public IRubyObject add_namespace_definition(ThreadContext context, IRubyObject prefix, IRubyObject href) {
-        String prefixString = prefix.isNil() ? "" : prefix.convertToString().asJavaString();
-        String hrefString = href.convertToString().asJavaString();
+    public IRubyObject add_namespace_definition(ThreadContext context,
+                                                IRubyObject prefix,
+                                                IRubyObject href) {
+        String prefixString = prefix.isNil() ? "" : rubyStringToString(prefix);
+        String hrefString = rubyStringToString(href);
         XmlNamespace ns = this.nsCache.get(context, this, prefixString, hrefString);
 
-        add_namespace_definitions(context, ns,
-                                  (prefix.isNil()) ? "xmlns" : "xmlns:"+prefixString,
-                                  hrefString);
+        if (node instanceof Element) {
+        }
 
-        // resetNamespaceDefinitions();
+        namespace_definitions = null; // clear cache
         return ns;
     }
 

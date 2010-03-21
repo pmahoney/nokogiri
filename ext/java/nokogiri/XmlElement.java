@@ -36,26 +36,21 @@ public class XmlElement extends XmlNode {
 
     @Override
     @JRubyMethod
-    public IRubyObject add_namespace_definition(ThreadContext context, IRubyObject prefix, IRubyObject href) {
-        Element e = (Element) node;
+    public IRubyObject add_namespace_definition(ThreadContext context,
+                                                IRubyObject prefix,
+                                                IRubyObject href) {
+        Element element = (Element) node;
 
-        String pref = "xmlns";
-        
-        if(!prefix.isNil()) {
-            pref += ":"+prefix.convertToString().asJavaString();
-        }
+        final String uri = "http://www.w3.org/2000/xmlns/";
+        String qName =
+            prefix.isNil() ? "xmlns" : "xmlns:" + rubyStringToString(prefix);
+        element.setAttributeNS(uri, qName, rubyStringToString(href));
 
-        e.setAttribute(pref, href.convertToString().asJavaString());
-
-        return super.add_namespace_definition(context, prefix, href);
-    }
-
-    @Override
-    public void add_namespace_definitions(ThreadContext context, XmlNamespace ns, String prefix, String href) {
-        Element e = (Element) node;
-        e.setAttribute(prefix, href);
-
+        XmlNamespace ns = (XmlNamespace)
+            super.add_namespace_definition(context, prefix, href);
         updateNodeNamespaceIfNecessary(context, ns);
+
+        return ns;
     }
 
     @Override
