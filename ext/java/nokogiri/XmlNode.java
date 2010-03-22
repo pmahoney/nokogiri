@@ -44,6 +44,8 @@ import static nokogiri.internals.NokogiriHelpers.getCachedNodeOrCreate;
 import static nokogiri.internals.NokogiriHelpers.isNamespace;
 import static nokogiri.internals.NokogiriHelpers.isNonDefaultNamespace;
 import static nokogiri.internals.NokogiriHelpers.rubyStringToString;
+import static nokogiri.internals.NokogiriHelpers.nonEmptyStringOrNil;
+import static nokogiri.internals.NokogiriHelpers.stringOrNil;
 
 public class XmlNode extends RubyObject {
 
@@ -366,10 +368,7 @@ public class XmlNode extends RubyObject {
      */
     protected IRubyObject getAttribute(ThreadContext context, String key) {
         String value = getAttribute(key);
-        if (value == null)
-            return context.getRuntime().getNil();
-        else
-            return context.getRuntime().newString(value);
+        return nonEmptyStringOrNil(context.getRuntime(), value);
     }
 
     protected String getAttribute(String key) {
@@ -634,10 +633,7 @@ public class XmlNode extends RubyObject {
     public IRubyObject content(ThreadContext context) {
         if(this.content == null) {
             String textContent = this.node.getTextContent();
-            if (textContent == null)
-                content = context.getRuntime().getNil();
-            else
-                content = context.getRuntime().newString(textContent);
+            content = stringOrNil(context.getRuntime(), textContent);
         }
 
         return this.content;

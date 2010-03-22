@@ -47,6 +47,17 @@ public class NokogiriHelpers {
     }
 
     /**
+     * Convert <code>s</code> to a RubyString, or if s is null or
+     * empty return RubyNil.
+     */
+    public static IRubyObject nonEmptyStringOrNil(Ruby ruby, String s) {
+        if (s == null || s.isEmpty())
+            return ruby.getNil();
+
+        return ruby.newString(s);
+    }
+
+    /**
      * Return the prefix of a qualified name like "prefix:local".
      * Returns null if there is no prefix.
      */
