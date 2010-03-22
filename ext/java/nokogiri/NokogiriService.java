@@ -31,6 +31,7 @@ public class NokogiriService implements BasicLibraryService{
         init_xml_node(ruby, node);
         init_xml_attr(ruby, xml, node);
         init_xml_comment(ruby, xml, node);
+        init_xml_processing_instruction(ruby, xml, node);
         RubyClass document = init_xml_document(ruby, xml, node);
         init_html_document(ruby, html, document);
         init_html_element_description(ruby, html);
@@ -108,6 +109,14 @@ public class NokogiriService implements BasicLibraryService{
         RubyModule comment = xml.defineClassUnder("Comment", node, XML_COMMENT_ALLOCATOR);
 
         comment.defineAnnotatedMethods(XmlComment.class);
+    }
+
+    public static void init_xml_processing_instruction(Ruby ruby,
+                                                       RubyModule xml,
+                                                       RubyClass node) {
+        RubyModule pi = xml.defineClassUnder("ProcessingInstruction", node,
+                                             XML_PROCESSING_INSTRUCTION_ALLOCATOR);
+        pi.defineAnnotatedMethods(XmlProcessingInstruction.class);
     }
 
     public static RubyClass init_xml_document(Ruby ruby, RubyModule xml, RubyClass node) {
@@ -301,6 +310,13 @@ public class NokogiriService implements BasicLibraryService{
     };
 
     private static ObjectAllocator XML_COMMENT_ALLOCATOR = new ObjectAllocator() {
+        public IRubyObject allocate(Ruby runtime, RubyClass klazz) {
+            throw runtime.newNotImplementedError("not implemented");
+        }
+    };
+
+    private static ObjectAllocator XML_PROCESSING_INSTRUCTION_ALLOCATOR =
+        new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klazz) {
             throw runtime.newNotImplementedError("not implemented");
         }
