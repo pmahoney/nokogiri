@@ -162,30 +162,41 @@ public class XmlNode extends RubyObject {
     }
 
     /**
-     * Given three nodes such that firstNode is previousSibling of secondNode
-     * and secondNode is previousSibling of third node, this method coalesces
-     * two subsequent TextNodes.
+     * Coalesce text nodes around <code>anchorNode</code>.  If
+     * <code>anchorNode</code> has siblings (previous or next) that
+     * are text nodes, the content will be merged into
+     * <code>anchorNode</code> and the redundant nodes will be removed
+     * from the DOM.
+     *
+     * To match libxml behavior (?) the final content of
+     * <code>anchorNode</code> and any removed nodes will be
+     * identical.
+     *
      * @param context
-     * @param firstNode
-     * @param secondNode
-     * @param thirdNode
+     * @param anchorNode
      */
-    protected static void coalesceTextNodesIntelligently(ThreadContext context, IRubyObject firstNode,
-            IRubyObject secondNode, IRubyObject thirdNode) {
+    protected static void coalesceTextNodes(ThreadContext context,
+                                            IRubyObject anchorNode) {
+        XmlNode xa = asXmlNode(context, anchorNode);
 
-        XmlNode x1 = asXmlNodeOrNull(context, firstNode);
-        XmlNode x2 = asXmlNode(context, secondNode);
-        XmlNode x3 = asXmlNodeOrNull(context, thirdNode);
+        XmlNode xp = asXmlNodeOrNull(context, xa.previous_sibling(context));
+        XmlNode xn = asXmlNodeOrNull(context, xa.next_sibling(context));
 
-        Node first = x1 == null ? null : x1.node;
-        Node second = x2.node;
-        Node third = x3 == null ? null : x3.node;
+        Node p = xp == null ? null : xp.node;
+        Node a = xa.node;
+        Node n = xn == null ? null : xn.node;
 
-        if(second.getNodeType() == Node.TEXT_NODE) {
-            if(first != null && first.getNodeType() == Node.TEXT_NODE) {
-                coalesceTextNodes(context, firstNode, secondNode);
-            } else if(third != null && third.getNodeType() == Node.TEXT_NODE) {
-                coalesceTextNodes(context, secondNode, thirdNode);
+        Node parent = a.getParentNode();
+
+        if(a.getNodeType() == Node.TEXT_NODE) {
+            if(p != null && p.getNodeType() == Node.TEXT_NODE) {
+                xa.setContent(p.getNodeValue() + a.getNodeValue());
+                parent.removeChild(p);
+                xp.assimilateXmlNode(context, xa);
+            } else if(n != null && n.getNodeType() == Node.TEXT_NODE) {
+                xa.setContent(a.getNodeValue() + n.getNodeValue());
+                parent.removeChild(n);
+                xn.assimilateXmlNode(context, xa);
             }
         }
     }
@@ -230,8 +241,7 @@ public class XmlNode extends RubyObject {
         this.node = node;
 
         if (node != null) {
-            node.setUserData(NokogiriUserDataHandler.CACHED_NODE, this,
-                             new NokogiriUserDataHandler(ruby));
+            resetCache(ruby);
 
             if (node.getNodeType() != Node.DOCUMENT_NODE) {
                 XmlNode owner = (XmlNode) this.document(ruby.getCurrentContext());
@@ -260,6 +270,7 @@ public class XmlNode extends RubyObject {
         XmlNode toAssimilate = asXmlNode(context, otherNode);
 
         this.node = toAssimilate.node;
+        content = null;         // clear cache
     }
 
     /**
@@ -803,6 +814,11 @@ public class XmlNode extends RubyObject {
         this.node.setTextContent(rubyStringToString(content));
     }
 
+    protected void setContent(String content) {
+        getNode().setTextContent(content);
+        this.content = null;    // clear cache
+    }
+
     @JRubyMethod(name = "native_content=", visibility = Visibility.PRIVATE)
     public IRubyObject native_content_set(ThreadContext context, IRubyObject content) {
         setContent(content);
@@ -842,7 +858,12 @@ public class XmlNode extends RubyObject {
 
     @JRubyMethod
     public IRubyObject next_sibling(ThreadContext context) {
-        return constructNode(context.getRuntime(), node.getNextSibling());
+        return fromNodeOrCreate(context, node.getNextSibling());
+    }
+
+    @JRubyMethod
+    public IRubyObject previous_sibling(ThreadContext context) {
+        return fromNodeOrCreate(context, node.getPreviousSibling());
     }
 
     @JRubyMethod(meta = true, rest = true)
@@ -892,11 +913,6 @@ public class XmlNode extends RubyObject {
     @JRubyMethod
     public IRubyObject pointer_id(ThreadContext context) {
         return RubyFixnum.newFixnum(context.getRuntime(), this.node.hashCode());
-    }
-
-    @JRubyMethod
-    public IRubyObject previous_sibling(ThreadContext context) {
-        return constructNode(context.getRuntime(), node.getPreviousSibling());
     }
 
     @JRubyMethod
@@ -1031,9 +1047,10 @@ public class XmlNode extends RubyObject {
      * <code>this</code> using the specified scheme.
      */
     protected IRubyObject adoptAs(ThreadContext context, AdoptScheme scheme,
-                                  IRubyObject other) {
+                                  IRubyObject other_) {
+        XmlNode other = asXmlNode(context, other_);
         Node thisNode = this.getNode();
-        Node otherNode = asXmlNode(context, other).getNode();
+        Node otherNode = other.getNode();
 
          try {
             Document doc = thisNode.getOwnerDocument();
@@ -1067,10 +1084,7 @@ public class XmlNode extends RubyObject {
          }
 
         if (otherNode.getNodeType() == Node.TEXT_NODE) {
-            coalesceTextNodesIntelligently(context,
-                                           null, // other.prev_sibling(),
-                                           other,
-                                           null); //other.next_sibling());
+            coalesceTextNodes(context, other);
         }
 
         //other.relink_namespace(context);
