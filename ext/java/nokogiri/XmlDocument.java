@@ -170,10 +170,24 @@ public class XmlDocument extends XmlNode {
     }
 
     @JRubyMethod(name="root=")
-    public IRubyObject root_set(ThreadContext context, IRubyObject newRoot) {
-        Node rootNode = asXmlNode(context, root(context)).node;
-        fromNode(context, rootNode)
-            .replace_node(context, newRoot);
+    public IRubyObject root_set(ThreadContext context, IRubyObject newRoot_) {
+        XmlNode newRoot = asXmlNode(context, newRoot_);
+
+        IRubyObject root = root(context);
+        if (root.isNil()) {
+            Node newRootNode;
+            if (getDocument() == newRoot.getOwnerDocument()) {
+                newRootNode = newRoot.getNode();
+            } else {
+                // must copy otherwise newRoot may exist in two places
+                // with different owner document.
+                newRootNode = getDocument().importNode(newRoot.getNode(), true);
+            }
+            add_child_node(context, fromNodeOrCreate(context, newRootNode));
+        } else {
+            Node rootNode = asXmlNode(context, root).node;
+            fromNode(context, rootNode).replace_node(context, newRoot);
+        }
 
         return newRoot;
     }
