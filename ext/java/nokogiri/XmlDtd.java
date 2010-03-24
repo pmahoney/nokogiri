@@ -43,6 +43,10 @@ public class XmlDtd extends XmlNode {
     protected RubyHash notations = null;
     protected RubyClass notationClass;
 
+    /** temporary store of content models before they are added to
+     * their XmlElementDecl. */
+    protected RubyHash contentModels;
+
     public static RubyClass getClass(Ruby ruby) {
         return (RubyClass)ruby.getClassFromPath("Nokogiri::XML::DTD");
     }
@@ -165,7 +169,7 @@ public class XmlDtd extends XmlNode {
         return stringOrNil(context.getRuntime(), dt.getPublicId());
     }
 
-    protected static boolean nameEquals(Node node, QName name) {
+    public static boolean nameEquals(Node node, QName name) {
         return name.localpart.equals(node.getNodeName());
     }
 
@@ -186,6 +190,10 @@ public class XmlDtd extends XmlNode {
         return nameEquals(node, DTDConfiguration.E_NOTATION_DECL);
     }
 
+    public static boolean isContentModel(Node node) {
+        return nameEquals(node, DTDConfiguration.E_CONTENT_MODEL);
+    }
+
     /**
      * Recursively extract various DTD declarations and store them in
      * the various collections.
@@ -199,6 +207,7 @@ public class XmlDtd extends XmlNode {
         elements = RubyHash.newHash(runtime);
         entities = RubyHash.newHash(runtime);
         notations = RubyHash.newHash(runtime);
+        contentModels = RubyHash.newHash(runtime);
 
         // recursively extract decls
         if (dtdNode == null) return; // leave all the decl hash's empty
@@ -226,6 +235,18 @@ public class XmlDtd extends XmlNode {
             XmlElementDecl elemDecl = (XmlElementDecl) val;
 
             elemDecl.appendAttrDecl(attrDecl);
+        }
+
+        // add content models to the matching element decl
+        keys = contentModels.keys();
+        for (int i = 0; i < keys.getLength(); ++i) {
+            IRubyObject key = keys.entry(i);
+            IRubyObject cm = contentModels.op_aref(context, key);
+
+            IRubyObject elem = elements.op_aref(context, key);
+            if (elem.isNil()) continue;
+            if (((XmlElementDecl)elem).isEmpty()) continue;
+            ((XmlElementDecl) elem).setContentModel(cm);
         }
     }
 
@@ -257,9 +278,17 @@ public class XmlDtd extends XmlNode {
                 notations.op_aset(context,
                                   tmp.getAttribute(context, "name"), decl);
                 allDecls.append(decl);
+            } else if (isContentModel(child)) {
+                XmlElementContent cm =
+                    new XmlElementContent(context.getRuntime(),
+                                          (XmlDocument) document(context),
+                                          child);
+                contentModels.op_aset(context, cm.element_name(context), cm);
+            } else {
+                // recurse
+                extractDecls(context, child);
             }
 
-            extractDecls(context, child);
             child = child.getNextSibling();
         }
     }

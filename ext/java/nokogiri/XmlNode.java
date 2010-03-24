@@ -378,8 +378,12 @@ public class XmlNode extends RubyObject {
      * declarations like XmlElementDecl.
      */
     protected IRubyObject getAttribute(ThreadContext context, String key) {
+        return getAttribute(context.getRuntime(), key);
+    }
+
+    protected IRubyObject getAttribute(Ruby runtime, String key) {
         String value = getAttribute(key);
-        return nonEmptyStringOrNil(context.getRuntime(), value);
+        return nonEmptyStringOrNil(runtime, value);
     }
 
     protected String getAttribute(String key) {

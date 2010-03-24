@@ -46,6 +46,7 @@ public class NokogiriService implements BasicLibraryService{
         init_xml_attribute_decl(ruby, xml, node);
         init_xml_element_decl(ruby, xml, node);
         init_xml_entity_decl(ruby, xml, node);
+        init_xml_element_content(ruby, xml);
         RubyClass xmlSaxParser = init_xml_sax_parser(ruby, xml);
         init_xml_sax_push_parser(ruby, xml);
         init_html_sax_parser(ruby, html, xmlSaxParser);
@@ -195,6 +196,13 @@ public class NokogiriService implements BasicLibraryService{
                                                   XML_ENTITY_DECL_ALLOCATOR);
 
         attrDecl.defineAnnotatedMethods(XmlEntityDecl.class);
+    }
+
+    public static void init_xml_element_content(Ruby ruby, RubyModule xml) {
+        RubyClass ec = xml.defineClassUnder("ElementContent",
+                                            ruby.getObject(),
+                                            XML_ELEMENT_CONTENT_ALLOCATOR);
+        ec.defineAnnotatedMethods(XmlElementContent.class);
     }
 
     public static void init_xml_relaxng(Ruby ruby, RubyModule xml, RubyClass schema) {
@@ -391,6 +399,12 @@ public class NokogiriService implements BasicLibraryService{
     private static ObjectAllocator XML_ENTITY_DECL_ALLOCATOR = new ObjectAllocator() {
         public IRubyObject allocate(Ruby runtime, RubyClass klazz) {
             return new XmlEntityDecl(runtime, klazz);
+        }
+    };
+
+    private static ObjectAllocator XML_ELEMENT_CONTENT_ALLOCATOR = new ObjectAllocator() {
+        public IRubyObject allocate(Ruby runtime, RubyClass klazz) {
+            throw runtime.newNotImplementedError("not implemented");
         }
     };
 

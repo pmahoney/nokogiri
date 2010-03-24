@@ -62,6 +62,8 @@ public class NokogiriHelpers {
      * Returns null if there is no prefix.
      */
     public static String getPrefix(String qName) {
+        if (qName == null) return null;
+
         int pos = qName.indexOf(':');
         if (pos > 0)
             return qName.substring(0, pos);
@@ -74,6 +76,8 @@ public class NokogiriHelpers {
      * Returns <code>qName</code> if there is no prefix.
      */
     public static String getLocalPart(String qName) {
+        if (qName == null) return null;
+
         int pos = qName.indexOf(':');
         if (pos > 0)
             return qName.substring(pos + 1);

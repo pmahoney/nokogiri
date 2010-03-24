@@ -22,6 +22,8 @@ import static nokogiri.internals.NokogiriHelpers.getLocalPart;
 public class XmlElementDecl extends XmlNode {
     RubyArray attrDecls;
 
+    IRubyObject contentModel;
+
     public static RubyClass getRubyClass(Ruby ruby) {
         return (RubyClass)ruby.getClassFromPath("Nokogiri::XML::ElementDecl");
     }
@@ -38,6 +40,7 @@ public class XmlElementDecl extends XmlNode {
     public XmlElementDecl(Ruby ruby, RubyClass klass, Node elemDeclNode) {
         super(ruby, klass, elemDeclNode);
         attrDecls = RubyArray.newArray(ruby);
+        contentModel = ruby.getNil();
     }
 
     public static IRubyObject create(ThreadContext context, Node elemDeclNode) {
@@ -50,6 +53,20 @@ public class XmlElementDecl extends XmlNode {
 
     public IRubyObject element_name(ThreadContext context) {
         return getAttribute(context, "ename");
+    }
+
+    public void setContentModel(IRubyObject cm) {
+        contentModel = cm;
+    }
+
+    @Override
+    @JRubyMethod
+    public IRubyObject content(ThreadContext context) {
+        return contentModel;
+    }
+
+    public boolean isEmpty() {
+        return "EMPTY".equals(getAttribute("model"));
     }
 
     @JRubyMethod
