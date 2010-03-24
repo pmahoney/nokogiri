@@ -19,6 +19,8 @@ import org.jruby.runtime.builtin.IRubyObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 
+import static nokogiri.internals.NokogiriHelpers.stringOrNil;
+
 public class XmlDocument extends XmlNode {
     /* UserData keys for storing extra info in the document node. */
     protected final static String DTD_INTERNAL_SUBSET = "DTD_INTERNAL_SUBSET";
@@ -190,6 +192,11 @@ public class XmlDocument extends XmlNode {
         }
 
         return newRoot;
+    }
+
+    @JRubyMethod
+    public IRubyObject version(ThreadContext context) {
+        return stringOrNil(context.getRuntime(), getDocument().getXmlVersion());
     }
 
     @JRubyMethod(meta = true)
