@@ -12,19 +12,15 @@ import org.jruby.runtime.ThreadContext;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentType;
+import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import static nokogiri.internals.NokogiriHelpers.stringOrNil;
+import static nokogiri.internals.NokogiriHelpers.nonEmptyStringOrNil;
 import static org.jruby.javasupport.util.RuntimeHelpers.invoke;
 
 public class XmlDtd extends XmlNode {
-    /**
-     * The as-parsed by NekoDTD and worked over by
-     * newFromInternalSubset() node containnit DTD decls.
-     */
-    protected Node dtdNode;
-
     protected RubyArray allDecls = null;
 
     /** cache of children, Nokogiri::XML::NodeSet */
@@ -47,6 +43,15 @@ public class XmlDtd extends XmlNode {
      * their XmlElementDecl. */
     protected RubyHash contentModels;
 
+    /** node name */
+    protected IRubyObject name;
+
+    /** public ID (or external ID) */
+    protected IRubyObject pubId;
+
+    /** system ID */
+    protected IRubyObject sysId;
+
     public static RubyClass getClass(Ruby ruby) {
         return (RubyClass)ruby.getClassFromPath("Nokogiri::XML::DTD");
     }
@@ -55,43 +60,102 @@ public class XmlDtd extends XmlNode {
         super(ruby, rubyClass);
     }
 
-    public XmlDtd(Ruby ruby, DocumentType node, Node dtdNode) {
-        this(ruby, getClass(ruby), node, dtdNode);
+    public XmlDtd(Ruby ruby) {
+        this(ruby, getClass(ruby), null);
     }
 
-    public XmlDtd(Ruby ruby, RubyClass rubyClass,
-                  DocumentType node, Node dtdNode) {
-        super(ruby, rubyClass, node);
-        this.dtdNode = dtdNode;
+    public XmlDtd(Ruby ruby, Node dtd) {
+        this(ruby, getClass(ruby), dtd);
+    }
+
+    public XmlDtd(Ruby ruby, RubyClass rubyClass, Node dtd) {
+        super(ruby, rubyClass, dtd);
         notationClass = (RubyClass)
             ruby.getClassFromPath("Nokogiri::XML::Notation");
+
+        name = pubId = sysId = ruby.getNil();
+        if (dtd == null) return;
+
+        // This is the dtd declaration stored in the document; it
+        // contains the DTD name (root element) and public and system
+        // ids.  The actual declarations are in the NekoDTD 'dtd'
+        // variable. I don't know of a way to consolidate the two.
+
+        DocumentType otherDtd = dtd.getOwnerDocument().getDoctype();
+        if (otherDtd != null) {
+            name = stringOrNil(ruby, otherDtd.getNodeName());
+            pubId = nonEmptyStringOrNil(ruby, otherDtd.getPublicId());
+            sysId = nonEmptyStringOrNil(ruby, otherDtd.getSystemId());
+        }
     }
 
     /**
      * Create an unparented element that contains DTD declarations
-     * parsed from the internal subset of <code>doctype</dtd>.  The
-     * owner document of each node will be the owner of
-     * <code>doctype</doc>.
+     * parsed from the internal subset attached as user data to
+     * <code>doc</code>.  The attached dtd must be the tree from
+     * NekoDTD. The owner document of the returned tree will be
+     * <code>doc</doc>.
      *
      * NekoDTD parser returns a new document node containing elements
      * representing the dtd declarations. The plan is to get the root
      * element and adopt it into the correct document, stipping the
      * Document provided by NekoDTD.
+     *
      */
-    public static XmlDtd newFromInternalSubset(Ruby ruby, DocumentType node) {
-        Document doc = node.getOwnerDocument();
-        String dtd = node.getInternalSubset();
-        if (dtd == null) {
-            return new XmlDtd(ruby, node, null);
+    public static XmlDtd newFromInternalSubset(Ruby ruby, Document doc) {
+        Object dtdTree_ = doc.getUserData(XmlDocument.DTD_RAW_DOCUMENT);
+        if (dtdTree_ == null) {
+            System.out.println("no dtd tree");
+            return new XmlDtd(ruby);
         }
+        Node dtdTree = (Node) dtdTree_;
+        Node dtd = getInternalSubset(dtdTree);
+        if (dtd == null) {
+            System.out.println("no internal subset");
+            return new XmlDtd(ruby); }
+        else {
+            // Import the node into doc so it has the correct owner document.
+            dtd = doc.importNode(dtd, true);
+            return new XmlDtd(ruby, dtd);
+        }
+    }
 
-        Document dtdDoc = XmlDtdParser.parse(dtd);
-        Node dtdNode = dtdDoc.getDocumentElement();
-        doc.importNode(dtdNode, true); // adoptNode doesn't work here
-                                       // (all attributes are empty
-                                       // string; not sure why -Patrick)
+    /*
+     * <code>dtd</code> is the document node of a NekoDTD tree.
+     * NekoDTD tree looks like this:
+     *
+     * <code><pre>
+     * [#document: null]
+     *   [#comment: ...]
+     *   [#comment: ...]
+     *   [dtd: null]   // a DocumentType; isDTD(node) => false
+     *   [dtd: null]   // root of dtd, an Element node; isDTD(node) => true
+     *     ... decls, content models, etc. ...
+     *     [externalSubset: null] pubid="the pubid" sysid="the sysid"
+     *       ... external subset decls, etc. ...
+     * </pre></code>
+     */
+    protected static Node getInternalSubset(Node dtdTree) {
+        Node root;
+        for (root = dtdTree.getFirstChild(); ; root = root.getNextSibling()) {
+            if (root == null)
+                return null;
+            else if (isDTD(root))
+                return root;      // we have second dtd which is root
+        }
+    }
 
-        return new XmlDtd(ruby, node, dtdNode);
+    /**
+     * Note: <code>dtd</code> is the root dtd node returned by
+     * getInternalSubset(), not the raw NekoDTD document.
+     */
+    protected static Node getExternalSubset(Node dtd) {
+        for (Node ext = dtd.getFirstChild(); ; ext = ext.getNextSibling()) {
+            if (ext == null)
+                return null;
+            else if (isExternalSubset(ext))
+                return ext;
+        }
     }
 
     @Override
@@ -142,8 +206,7 @@ public class XmlDtd extends XmlNode {
     @Override
     @JRubyMethod
     public IRubyObject node_name(ThreadContext context) {
-        DocumentType dt = (DocumentType) getNode();
-        return context.getRuntime().newString(dt.getName());
+        return name;
     }
 
     @Override
@@ -153,24 +216,31 @@ public class XmlDtd extends XmlNode {
             .newRuntimeError("cannot change name of DTD");
     }
 
-    /**
-     * Return the basename of the system id.  E.g. for system id of
-     * "files/staff.xml", return "staff.xml".
-     */
     @JRubyMethod
     public IRubyObject system_id(ThreadContext context) {
-        DocumentType dt = (DocumentType) getNode();
-        return context.getRuntime().newString(dt.getSystemId());
+        return sysId;
     }
 
     @JRubyMethod
     public IRubyObject external_id(ThreadContext context) {
-        DocumentType dt = (DocumentType) getNode();
-        return stringOrNil(context.getRuntime(), dt.getPublicId());
+        return pubId;
     }
 
     public static boolean nameEquals(Node node, QName name) {
         return name.localpart.equals(node.getNodeName());
+    }
+
+    public static boolean isExternalSubset(Node node) {
+        return nameEquals(node, DTDConfiguration.E_EXTERNAL_SUBSET);
+    }
+
+    /**
+     * Checks instanceof Element so we return false for a DocumentType
+     * node (NekoDTD uses Element for all its nodes).
+     */
+    public static boolean isDTD(Node node) {
+        return (node instanceof Element &&
+                nameEquals(node, DTDConfiguration.E_DTD));
     }
 
     public static boolean isAttributeDecl(Node node) {
@@ -208,10 +278,11 @@ public class XmlDtd extends XmlNode {
         entities = RubyHash.newHash(runtime);
         notations = RubyHash.newHash(runtime);
         contentModels = RubyHash.newHash(runtime);
+        children = runtime.getNil();
 
         // recursively extract decls
-        if (dtdNode == null) return; // leave all the decl hash's empty
-        extractDecls(context, dtdNode);
+        if (getNode() == null) return; // leave all the decl hash's empty
+        extractDecls(context, getNode().getFirstChild());
 
         // convert allDecls to a NodeSet
         children =
@@ -250,27 +321,39 @@ public class XmlDtd extends XmlNode {
         }
     }
 
+    /**
+     * The <code>node</code> is either the first child of the root dtd
+     * node (as returned by getInternalSubset()) or the first child of
+     * the external subset node (as returned by getExternalSubset()).
+     *
+     * This recursive function will not descend into an
+     * 'externalSubset' node, thus for an internal subset it only
+     * extracts nodes in the internal subset, and for an external
+     * subset it extracts everything and assumess <code>node</code>
+     * and all children are part of the external subset.
+     */
     protected void extractDecls(ThreadContext context, Node node) {
-        Node child = node.getFirstChild();
-        while (child != null) {
-            if (isAttributeDecl(child)) {
+        while (node != null) {
+            if (isExternalSubset(node)) {
+                return;
+            } else if (isAttributeDecl(node)) {
                 XmlAttributeDecl decl = (XmlAttributeDecl)
-                    XmlAttributeDecl.create(context, child);
+                    XmlAttributeDecl.create(context, node);
                 attributes.op_aset(context, decl.attribute_name(context), decl);
                 allDecls.append(decl);
-            } else if (isElementDecl(child)) {
+            } else if (isElementDecl(node)) {
                 XmlElementDecl decl = (XmlElementDecl)
-                    XmlElementDecl.create(context, child);
+                    XmlElementDecl.create(context, node);
                 elements.op_aset(context, decl.element_name(context), decl);
                 allDecls.append(decl);
-            } else if (isEntityDecl(child)) {
+            } else if (isEntityDecl(node)) {
                 XmlEntityDecl decl = (XmlEntityDecl)
-                    XmlEntityDecl.create(context, child);
+                    XmlEntityDecl.create(context, node);
                 entities.op_aset(context, decl.node_name(context), decl);
                 allDecls.append(decl);
-            } else if (isNotationDecl(child)) {
+            } else if (isNotationDecl(node)) {
                 XmlNode tmp = (XmlNode)
-                    XmlNode.constructNode(context.getRuntime(), child);
+                    XmlNode.constructNode(context.getRuntime(), node);
                 IRubyObject decl = invoke(context, notationClass, "new",
                                           tmp.getAttribute(context, "name"),
                                           tmp.getAttribute(context, "pubid"),
@@ -278,18 +361,18 @@ public class XmlDtd extends XmlNode {
                 notations.op_aset(context,
                                   tmp.getAttribute(context, "name"), decl);
                 allDecls.append(decl);
-            } else if (isContentModel(child)) {
+            } else if (isContentModel(node)) {
                 XmlElementContent cm =
                     new XmlElementContent(context.getRuntime(),
                                           (XmlDocument) document(context),
-                                          child);
+                                          node);
                 contentModels.op_aset(context, cm.element_name(context), cm);
             } else {
                 // recurse
-                extractDecls(context, child);
+                extractDecls(context, node.getFirstChild());
             }
 
-            child = child.getNextSibling();
+            node = node.getNextSibling();
         }
     }
 

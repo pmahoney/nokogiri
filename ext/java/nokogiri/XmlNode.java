@@ -224,8 +224,6 @@ public class XmlNode extends RubyObject {
                 return new XmlCdata(ruby, (RubyClass)ruby.getClassFromPath("Nokogiri::XML::CDATA"), node);
             case Node.DOCUMENT_NODE:
                 return new XmlDocument(ruby, (Document) node);
-            case Node.DOCUMENT_TYPE_NODE:
-                return XmlDtd.newFromInternalSubset(ruby, (DocumentType) node);
             default:
                 return new XmlNode(ruby, (RubyClass)ruby.getClassFromPath("Nokogiri::XML::Node"), node);
         }

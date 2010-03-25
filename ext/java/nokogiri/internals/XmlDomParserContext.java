@@ -177,7 +177,19 @@ public class XmlDomParserContext extends ParserContext {
 
     protected Document do_parse()
         throws ParserConfigurationException, SAXException, IOException {
-        return getDocumentBuilder().parse(getInputSource());
+        //return getDocumentBuilder().parse(getInputSource());
+        XmlDomParser parser = new XmlDomParser();
+
+        parser.setEntityResolver(new EntityResolver() {
+                public InputSource resolveEntity(String arg0, String arg1)
+                    throws SAXException, IOException {
+                    return new InputSource(new ByteArrayInputStream(new byte[0]));
+                }
+            });
+
+        parser.setErrorHandler(this.errorHandler);
+        parser.parse(getInputSource());
+        return parser.getDocument();
     }
 
     public boolean dtdAttr() { return this.dtdAttr; }

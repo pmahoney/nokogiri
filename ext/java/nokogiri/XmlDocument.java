@@ -23,6 +23,7 @@ import static nokogiri.internals.NokogiriHelpers.stringOrNil;
 
 public class XmlDocument extends XmlNode {
     /* UserData keys for storing extra info in the document node. */
+    public final static String DTD_RAW_DOCUMENT = "DTD_RAW_DOCUMENT";
     protected final static String DTD_INTERNAL_SUBSET = "DTD_INTERNAL_SUBSET";
     protected final static String DTD_EXTERNAL_SUBSET = "DTD_EXTERNAL_SUBSET";
 
@@ -209,15 +210,15 @@ public class XmlDocument extends XmlNode {
         IRubyObject dtd =
             (IRubyObject) node.getUserData(DTD_INTERNAL_SUBSET);
 
-        if (dtd != null)
-            return dtd;
+        if (dtd == null) {
+            if (getDocument().getDoctype() == null)
+                dtd = context.getRuntime().getNil();
+            else
+                dtd = XmlDtd.newFromInternalSubset(context.getRuntime(),
+                                                   getDocument());
 
-        if (getDocument().getDoctype() == null)
-            return context.getRuntime().getNil();
-
-        dtd = XmlDtd.newFromInternalSubset(context.getRuntime(),
-                                           getDocument().getDoctype());
-        node.setUserData(DTD_INTERNAL_SUBSET, dtd, null);
+            node.setUserData(DTD_INTERNAL_SUBSET, dtd, null);
+        }
 
         return dtd;
     }
