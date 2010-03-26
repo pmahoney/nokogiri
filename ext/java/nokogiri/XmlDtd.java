@@ -1,6 +1,5 @@
 package nokogiri;
 
-import nokogiri.internals.XmlDtdParser;
 import org.apache.xerces.xni.QName;
 import org.cyberneko.dtd.DTDConfiguration;
 import org.jruby.Ruby;

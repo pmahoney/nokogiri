@@ -8,7 +8,6 @@ import javax.xml.parsers.ParserConfigurationException;
 import nokogiri.internals.NokogiriUserDataHandler;
 import nokogiri.internals.XmlDomParserContext;
 import nokogiri.internals.SaveContext;
-import nokogiri.internals.XmlDtdParser;
 import org.jruby.Ruby;
 import org.jruby.RubyClass;
 import org.jruby.RubyString;
