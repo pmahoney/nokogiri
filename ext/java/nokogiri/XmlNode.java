@@ -746,7 +746,7 @@ public class XmlNode extends RubyObject {
         IRubyObject subset = internal_subset(context);
         if (!subset.isNil()) {
             throw context.getRuntime()
-                .newRuntimeError("Document already has an internal subset");
+                .newRuntimeError("Document already has internal subset");
         }
 
         throw context.getRuntime().newNotImplementedError("not implemented");
@@ -764,6 +764,20 @@ public class XmlNode extends RubyObject {
             (XmlDocument) getCachedNodeOrCreate(context.getRuntime(), document);
         IRubyObject xdtd = xdoc.getExternalSubset(context);
         return xdtd;
+    }
+
+    @JRubyMethod
+    public IRubyObject create_external_subset(ThreadContext context,
+                                              IRubyObject name,
+                                              IRubyObject external_id,
+                                              IRubyObject system_id) {
+        IRubyObject subset = external_subset(context);
+        if (!subset.isNil()) {
+            throw context.getRuntime()
+                .newRuntimeError("Document already has external subset");
+        }
+
+        throw context.getRuntime().newNotImplementedError("not implemented");
     }
 
     /**
