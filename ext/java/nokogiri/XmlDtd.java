@@ -120,12 +120,15 @@ public class XmlDtd extends XmlNode {
 
     public static IRubyObject newFromExternalSubset(Ruby ruby, Document doc) {
         Object dtdTree_ = doc.getUserData(XmlDocument.DTD_RAW_DOCUMENT);
-        if (dtdTree_ == null)
+        if (dtdTree_ == null) {
             return ruby.getNil();
+        }
 
         Node dtdTree = (Node) dtdTree_;
         Node dtd = getExternalSubset(dtdTree);
         if (dtd == null) {
+            return ruby.getNil();
+        } else if (!dtd.hasChildNodes()) {
             return ruby.getNil();
         } else {
             // Import the node into doc so it has the correct owner document.
@@ -159,11 +162,9 @@ public class XmlDtd extends XmlNode {
         }
     }
 
-    /**
-     * Note: <code>dtd</code> is the root dtd node returned by
-     * getInternalSubset(), not the raw NekoDTD document.
-     */
-    protected static Node getExternalSubset(Node dtd) {
+    protected static Node getExternalSubset(Node dtdTree) {
+        Node dtd = getInternalSubset(dtdTree);
+        if (dtd == null) return null;
         for (Node ext = dtd.getFirstChild(); ; ext = ext.getNextSibling()) {
             if (ext == null)
                 return null;
