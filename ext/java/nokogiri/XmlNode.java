@@ -752,6 +752,20 @@ public class XmlNode extends RubyObject {
         throw context.getRuntime().newNotImplementedError("not implemented");
     }
 
+    @JRubyMethod
+    public IRubyObject external_subset(ThreadContext context) {
+        Document document = getOwnerDocument();
+
+        if(document == null) {
+            return context.getRuntime().getNil();
+        }
+
+        XmlDocument xdoc =
+            (XmlDocument) getCachedNodeOrCreate(context.getRuntime(), document);
+        IRubyObject xdtd = xdoc.getExternalSubset(context);
+        return xdtd;
+    }
+
     /**
      * Test if this node has an attribute named <code>rbkey</code>.
      * Overridden in XmlElement.

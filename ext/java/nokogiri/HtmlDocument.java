@@ -26,9 +26,7 @@ public class HtmlDocument extends XmlDocument {
                                     IRubyObject[] args) {
         HtmlDocument doc = null;
         try {
-            HtmlDomParserContext ctx =
-                new HtmlDomParserContext(context.getRuntime(), 0);
-            Document docNode = ctx.getDocumentBuilder().newDocument();
+            Document docNode = createNewDocument();
             doc = new HtmlDocument(context.getRuntime(), (RubyClass) cls,
                                    docNode);
         } catch (Exception ex) {

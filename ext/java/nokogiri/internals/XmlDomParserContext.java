@@ -8,6 +8,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import nokogiri.XmlDocument;
 import nokogiri.XmlSyntaxError;
+import org.apache.xerces.parsers.DOMParser;
 import org.jruby.Ruby;
 import org.jruby.RubyArray;
 import org.jruby.RubyClass;
@@ -48,6 +49,8 @@ public class XmlDomParserContext extends ParserContext {
     public static final long NSCLEAN = 8192;
     public static final long NOCDATA = 16384;
     public static final long NOXINCNODE = 32768;
+
+    protected DOMParser parser;
 
     protected boolean strict, recover, noEnt, dtdLoad, dtdAttr, dtdValid,
             noError, noWarning, pedantic, noBlanks, sax1, xInclude, noNet,
@@ -94,30 +97,51 @@ public class XmlDomParserContext extends ParserContext {
         } else {
             this.errorHandler = new NokogiriStrictErrorHandler();
         }
+
+        initParser();
+    }
+
+    protected void initParser() {
+        parser = new XmlDomParser();
+
+        parser.setEntityResolver(new EntityResolver() {
+                public InputSource resolveEntity(String arg0, String arg1)
+                    throws SAXException, IOException {
+                    return new InputSource(new ByteArrayInputStream(new byte[0]));
+                }
+            });
+
+        parser.setErrorHandler(this.errorHandler);
+    }
+
+    /**
+     * Convenience method that catches and ignores SAXException
+     * (unrecognized and unsupported exceptions).
+     */
+    protected void setFeature(String feature, boolean value) {
+        try {
+            parser.setFeature(feature, value);
+        } catch (SAXException e) {
+            // ignore
+        }
+    }
+
+    /**
+     * Convenience method that catches and ignores SAXException
+     * (unrecognized and unsupported exceptions).
+     */
+    protected void setProperty(String property, Object value) {
+        try {
+            parser.setProperty(property, value);
+        } catch (SAXException e) {
+            // ignore
+        }
     }
 
     public void addErrorsIfNecessary(ThreadContext context, XmlDocument doc) {
         Ruby ruby = context.getRuntime();
         RubyArray errors = ruby.newArray(this.errorHandler.getErrorsReadyForRuby(context));
         doc.setInstanceVariable("@errors", errors);
-    }
-
-    public DocumentBuilder getDocumentBuilder() throws ParserConfigurationException {
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        dbf.setNamespaceAware(true);
-        dbf.setIgnoringElementContentWhitespace(false);
-        dbf.setValidating(!this.continuesOnError());
-
-        DocumentBuilder db = dbf.newDocumentBuilder();
-        db.setEntityResolver(new EntityResolver() {
-            public InputSource resolveEntity(String arg0, String arg1) throws SAXException, IOException {
-                return new InputSource(new ByteArrayInputStream(new byte[0]));
-            }
-        });
-
-        db.setErrorHandler(this.errorHandler);
-
-        return db;
     }
 
     public XmlDocument getDocumentWithErrorsOrRaiseException(ThreadContext context, Exception ex) {
@@ -166,8 +190,6 @@ public class XmlDomParserContext extends ParserContext {
             xmlDoc.setUrl(url);
             addErrorsIfNecessary(context, xmlDoc);
             return xmlDoc;
-        } catch (ParserConfigurationException e) {
-            return getDocumentWithErrorsOrRaiseException(context, e);
         } catch (SAXException e) {
             return getDocumentWithErrorsOrRaiseException(context, e);
         } catch (IOException e) {
@@ -175,19 +197,7 @@ public class XmlDomParserContext extends ParserContext {
         }
     }
 
-    protected Document do_parse()
-        throws ParserConfigurationException, SAXException, IOException {
-        //return getDocumentBuilder().parse(getInputSource());
-        XmlDomParser parser = new XmlDomParser();
-
-        parser.setEntityResolver(new EntityResolver() {
-                public InputSource resolveEntity(String arg0, String arg1)
-                    throws SAXException, IOException {
-                    return new InputSource(new ByteArrayInputStream(new byte[0]));
-                }
-            });
-
-        parser.setErrorHandler(this.errorHandler);
+    protected Document do_parse() throws SAXException, IOException {
         parser.parse(getInputSource());
         return parser.getDocument();
     }

@@ -104,16 +104,30 @@ public class XmlDtd extends XmlNode {
      */
     public static XmlDtd newFromInternalSubset(Ruby ruby, Document doc) {
         Object dtdTree_ = doc.getUserData(XmlDocument.DTD_RAW_DOCUMENT);
-        if (dtdTree_ == null) {
-            System.out.println("no dtd tree");
+        if (dtdTree_ == null)
             return new XmlDtd(ruby);
-        }
+
         Node dtdTree = (Node) dtdTree_;
         Node dtd = getInternalSubset(dtdTree);
         if (dtd == null) {
-            System.out.println("no internal subset");
-            return new XmlDtd(ruby); }
-        else {
+            return new XmlDtd(ruby);
+        } else {
+            // Import the node into doc so it has the correct owner document.
+            dtd = doc.importNode(dtd, true);
+            return new XmlDtd(ruby, dtd);
+        }
+    }
+
+    public static IRubyObject newFromExternalSubset(Ruby ruby, Document doc) {
+        Object dtdTree_ = doc.getUserData(XmlDocument.DTD_RAW_DOCUMENT);
+        if (dtdTree_ == null)
+            return ruby.getNil();
+
+        Node dtdTree = (Node) dtdTree_;
+        Node dtd = getExternalSubset(dtdTree);
+        if (dtd == null) {
+            return ruby.getNil();
+        } else {
             // Import the node into doc so it has the correct owner document.
             dtd = doc.importNode(dtd, true);
             return new XmlDtd(ruby, dtd);

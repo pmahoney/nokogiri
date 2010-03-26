@@ -29,20 +29,31 @@ import static nokogiri.internals.NokogiriHelpers.isNamespace;
  * @author sergio
  */
 public class HtmlDomParserContext extends XmlDomParserContext {
-    protected XMLDocumentFilter removeNSAttrsFilter;
+    protected static final String PROPERTY_FILTERS =
+        "http://cyberneko.org/html/properties/filters";
 
     public HtmlDomParserContext(Ruby runtime, IRubyObject options) {
         super(runtime, options);
-        init();
     }
 
     public HtmlDomParserContext(Ruby runtime, long options) {
         super(runtime, options);
-        init();
     }
 
-    protected void init() {
-        removeNSAttrsFilter = new RemoveNSAttrsFilter();
+    @Override
+    protected void initParser() {
+        XMLParserConfiguration config = new HTMLConfiguration();
+        config.setProperty("http://cyberneko.org/html/properties/names/elems",
+                           "lower");
+        config.setProperty("http://cyberneko.org/html/properties/names/attrs",
+                           "lower");
+
+        XMLDocumentFilter removeNSAttrsFilter = new RemoveNSAttrsFilter();
+        XMLDocumentFilter[] filters = { removeNSAttrsFilter };
+
+        parser = new DOMParser(config);
+        setFeature("http://xml.org/sax/features/namespaces", false);
+        setProperty(PROPERTY_FILTERS, filters);
     }
 
     @Override
@@ -58,27 +69,6 @@ public class HtmlDomParserContext extends XmlDomParserContext {
                                        RubyClass klass,
                                        Document doc) {
         return new HtmlDocument(context.getRuntime(), klass, doc);
-    }
-
-
-    @Override
-    public Document do_parse()
-        throws ParserConfigurationException, SAXException, IOException {
-        XMLParserConfiguration config = new HTMLConfiguration();
-        config.setProperty("http://cyberneko.org/html/properties/names/elems",
-                           "lower");
-        config.setProperty("http://cyberneko.org/html/properties/names/attrs",
-                           "lower");
-
-        DOMParser parser = new DOMParser(config);
-
-        parser.setFeature("http://xml.org/sax/features/namespaces", false);
-        XMLDocumentFilter[] filters = { removeNSAttrsFilter };
-        parser.setProperty("http://cyberneko.org/html/properties/filters",
-                           filters);
-
-        parser.parse(getInputSource());
-        return parser.getDocument();
     }
 
     /**

@@ -2,6 +2,7 @@ package nokogiri;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import nokogiri.internals.NokogiriUserDataHandler;
@@ -72,13 +73,20 @@ public class XmlDocument extends XmlNode {
         return getUrl();
     }
 
+    protected static Document createNewDocument() {
+        try {
+            return DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                .newDocument();
+        } catch (ParserConfigurationException e) {
+            return null;        // this will end is disaster...
+        }
+    }
+
     @JRubyMethod(name="new", meta = true, rest = true, required=0)
     public static IRubyObject rbNew(ThreadContext context, IRubyObject cls, IRubyObject[] args) {
         XmlDocument doc = null;
         try {
-            XmlDomParserContext ctx =
-                new XmlDomParserContext(context.getRuntime(), 0);
-            Document docNode = ctx.getDocumentBuilder().newDocument();
+            Document docNode = createNewDocument();
             doc = new XmlDocument(context.getRuntime(), (RubyClass) cls,
                                   docNode);
         } catch (Exception ex) {
@@ -223,6 +231,22 @@ public class XmlDocument extends XmlNode {
         return dtd;
     }
 
+    public IRubyObject getExternalSubset(ThreadContext context) {
+        IRubyObject dtd = (IRubyObject)
+            node.getUserData(DTD_EXTERNAL_SUBSET);
+
+        if (dtd == null) {
+            if (getDocument().getDoctype() == null)
+                dtd = context.getRuntime().getNil();
+            else
+                dtd = XmlDtd.newFromExternalSubset(context.getRuntime(),
+                                                   getDocument());
+
+            node.setUserData(DTD_EXTERNAL_SUBSET, dtd, null);
+        }
+
+        return dtd;
+    }
 
     @Override
     public void saveContent(ThreadContext context, SaveContext ctx) {
