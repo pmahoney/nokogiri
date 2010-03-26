@@ -31,6 +31,8 @@ import static nokogiri.internals.NokogiriHelpers.rubyStringToString;
  * @author sergio
  */
 public class XmlDomParserContext extends ParserContext {
+    protected static final String FEATURE_LOAD_EXTERNAL_DTD =
+        "http://apache.org/xml/features/nonvalidating/load-external-dtd";
 
     public static final long STRICT = 0;
     public static final long RECOVER = 1;
@@ -104,14 +106,23 @@ public class XmlDomParserContext extends ParserContext {
     protected void initParser() {
         parser = new XmlDomParser();
 
-        parser.setEntityResolver(new EntityResolver() {
-                public InputSource resolveEntity(String arg0, String arg1)
-                    throws SAXException, IOException {
-                    return new InputSource(new ByteArrayInputStream(new byte[0]));
-                }
-            });
-
         parser.setErrorHandler(this.errorHandler);
+
+        // If we turn off loading of external DTDs complete, we don't
+        // getthe publicID.  Instead of turning off completely, we use
+        // an entity resolver that returns empty documents.
+        if (dtdLoad()) {
+            setFeature(FEATURE_LOAD_EXTERNAL_DTD, true);
+        } else {
+            parser.setEntityResolver(new EntityResolver() {
+                    public InputSource resolveEntity(String arg0, String arg1)
+                        throws SAXException, IOException {
+                        ByteArrayInputStream empty =
+                            new ByteArrayInputStream(new byte[0]);
+                        return new InputSource(empty);
+                    }
+                });
+        }
     }
 
     /**
