@@ -99,8 +99,8 @@ module Nokogiri
           assert_match node.class.name, ins
           if node.respond_to? :attributes
             node.attributes.each do |k,v|
-              assert_match k, ins
-              assert_match v, ins
+              assert_match k.inspect, ins
+              assert_match v.inspect, ins
             end
           end
 
