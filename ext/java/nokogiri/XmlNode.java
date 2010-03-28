@@ -551,7 +551,7 @@ public class XmlNode extends RubyObject {
         return constructNode(context.getRuntime(), attr);
     }
 
-    @JRubyMethod
+    @JRubyMethod(visibility=Visibility.PRIVATE)
     public IRubyObject attribute_nodes(ThreadContext context) {
         NamedNodeMap nodeMap = this.node.getAttributes();
 
@@ -563,7 +563,7 @@ public class XmlNode extends RubyObject {
         RubyArray attr = ruby.newArray();
 
         for(int i = 0; i < nodeMap.getLength(); i++) {
-            attr.append(NokogiriHelpers.getCachedNodeOrCreate(ruby, nodeMap.item(i)));
+            attr.append(fromNodeOrCreate(context, nodeMap.item(i)));
         }
 
         return attr;
@@ -580,18 +580,6 @@ public class XmlNode extends RubyObject {
             return context.getRuntime().getNil();
         }
         return NokogiriHelpers.getCachedNodeOrCreate(context.getRuntime(), el);
-    }
-
-    @JRubyMethod
-    public IRubyObject attributes(ThreadContext context) {
-        Ruby ruby = context.getRuntime();
-        RubyHash hash = RubyHash.newHash(ruby);
-        NamedNodeMap attrs = node.getAttributes();
-        for (int i = 0; i < attrs.getLength(); i++) {
-            Node attr = attrs.item(i);
-            hash.op_aset(context, RubyString.newString(ruby, attr.getNodeName()), RubyString.newString(ruby, attr.getNodeValue()));
-        }
-        return hash;
     }
 
     @JRubyMethod(name = "blank?")

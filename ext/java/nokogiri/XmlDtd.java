@@ -8,6 +8,7 @@ import org.jruby.RubyClass;
 import org.jruby.RubyHash;
 import org.jruby.anno.JRubyMethod;
 import org.jruby.runtime.ThreadContext;
+import org.jruby.runtime.Visibility;
 import org.jruby.runtime.builtin.IRubyObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentType;
@@ -172,7 +173,10 @@ public class XmlDtd extends XmlNode {
         }
     }
 
-    @Override
+    /**
+     * This overrides the #attributes method defined in
+     * lib/nokogiri/xml/node.rb.
+     */
     @JRubyMethod
     public IRubyObject attributes(ThreadContext context) {
         if (attributes == null) extractDecls(context);
