@@ -551,7 +551,7 @@ public class XmlNode extends RubyObject {
         return constructNode(context.getRuntime(), attr);
     }
 
-    @JRubyMethod(visibility=Visibility.PRIVATE)
+    @JRubyMethod()
     public IRubyObject attribute_nodes(ThreadContext context) {
         NamedNodeMap nodeMap = this.node.getAttributes();
 
